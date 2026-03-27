@@ -2,7 +2,11 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Loader2, ShieldCheck, MapPin, XCircle, Smartphone, History } from "lucide-react";
+import { 
+  Loader2, ShieldCheck, MapPin, XCircle, 
+  CheckCircle2, Smartphone, History as HistoryIcon 
+} from "lucide-react";
+import HistoryModal from "../../admin/HistoryModal";
 
 export default function RequestPage() {
   const params = useParams();
@@ -13,24 +17,23 @@ export default function RequestPage() {
   const [inRange, setInRange] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [reqLoading, setReqLoading] = useState(false);
+  
+  // Modals State
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
-  // --- 📏 Range Check Logic ---
-  const checkAccess = (siteLat: number, siteLon: number) => {
-    if (!navigator.geolocation) return alert("GPS not supported");
-
+  // --- 📏 Range Check ---
+  const checkAccess = (siteLat: number, siteLon: number, siteRadius: number) => {
     navigator.geolocation.getCurrentPosition((pos) => {
-      const R = 6371000; // Meters
+      const R = 6371000;
       const dLat = (siteLat - pos.coords.latitude) * Math.PI / 180;
       const dLon = (siteLon - pos.coords.longitude) * Math.PI / 180;
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                 Math.cos(pos.coords.latitude * Math.PI/180) * Math.cos(siteLat * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c;
-
-      setInRange(distance <= 200); // 200 meters range
+      const distance = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+      setInRange(distance <= (siteRadius || 200));
       setLoading(false);
-    }, (err) => {
-      alert("Please enable Location to proceed");
+    }, () => {
       setLoading(false);
     });
   };
@@ -40,17 +43,14 @@ export default function RequestPage() {
       const { data } = await supabase.from("devices").select("*").eq("sn", deviceId).single();
       if (data) {
         setDevice(data);
-        checkAccess(data.latitude, data.longitude);
-      } else {
-        alert("Invalid QR Code");
-        setLoading(false);
+        checkAccess(data.latitude, data.longitude, data.radius);
       }
     };
     getDevice();
   }, [deviceId]);
 
   const handleRequest = async () => {
-    if (mobile.length < 10) return alert("Enter valid WhatsApp number");
+    if (mobile.length < 10) return;
     setReqLoading(true);
 
     const res = await fetch("/api/request-password", {
@@ -63,70 +63,76 @@ export default function RequestPage() {
     setReqLoading(false);
 
     if (data.success) {
-      alert("✅ Request Sent! Opening WhatsApp...");
-      window.open(data.waLink, "_blank");
+      setShowSuccessDialog(true); // 👈 Simple Alert ki jagah Dialog khulega
+      setMobile("");
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-blue-600 animate-pulse text-xl">VERIFYING LOCATION...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-blue-600 animate-pulse uppercase tracking-[5px]">Connecting...</div>;
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4">
-      <div className="w-full max-w-[480px] bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white">
+    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-[480px] bg-white rounded-[50px] shadow-2xl overflow-hidden relative border border-white">
         
-        {/* Header - Image Style */}
-        <div className="bg-[#f0f7ff] p-8 text-center border-b border-blue-50">
-          <h1 className="text-[32px] font-black text-blue-700 tracking-tight leading-none mb-4">
-            {device?.site_name || "CCTV PORTAL"}
-          </h1>
-          <div className="flex items-center justify-center gap-2">
-            <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase">Model</span>
-            <span className="text-slate-500 font-bold text-sm">Model: {device?.model}</span>
-          </div>
+        {/* Header */}
+        <div className="bg-[#f0f7ff] p-10 text-center border-b border-blue-50">
+          <h1 className="text-[34px] font-[1000] text-slate-900 tracking-tighter uppercase italic italic">{device?.site_name}</h1>
+          <p className="text-slate-400 font-bold text-[10px] tracking-[3px] uppercase mt-2">Verified Secure Node</p>
         </div>
 
         {inRange ? (
-          <div className="p-8 space-y-5">
-            {/* Input - Match Image Styling */}
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">📱</div>
-              <input 
-                type="tel"
-                placeholder="Enter WhatsApp Number"
-                className="w-full py-5 pl-12 pr-4 bg-white border-2 border-orange-400 rounded-2xl outline-none text-slate-600 font-bold placeholder:text-slate-400 placeholder:font-medium focus:shadow-[0_0_15px_rgba(251,146,60,0.2)] transition-all"
-                onChange={(e) => setMobile(e.target.value)}
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="space-y-3 pt-2">
-              <button 
-                onClick={handleRequest}
-                disabled={reqLoading}
-                className="w-full bg-[#f1f5f9] hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 font-black py-5 rounded-[25px] tracking-wide text-[16px] uppercase border border-slate-100 transition-all flex items-center justify-center gap-2"
-              >
-                {reqLoading ? <Loader2 className="animate-spin" /> : "Request Passwords"}
-              </button>
-
-              <button className="w-full bg-[#e2e8f0] hover:bg-blue-50 hover:text-blue-600 text-slate-700 font-black py-5 rounded-[25px] tracking-wide text-[16px] uppercase transition-all flex items-center justify-center gap-2">
-                View Maintenance Logs
-              </button>
-            </div>
-
-            <p className="text-center text-[10px] text-slate-400 mt-8 font-black uppercase tracking-widest">
-              Automated Alert | Modern Enterprise 2026
-            </p>
+          <div className="p-10 space-y-6">
+            <input 
+              type="tel" 
+              placeholder="WhatsApp Number" 
+              className="w-full py-6 px-8 bg-slate-50 border-2 border-slate-100 rounded-[30px] outline-none text-slate-800 font-black focus:border-blue-500 transition-all text-lg"
+              onChange={(e) => setMobile(e.target.value)}
+              value={mobile}
+            />
+            <button 
+              onClick={handleRequest} 
+              disabled={reqLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-[1000] py-6 rounded-[35px] tracking-widest uppercase shadow-xl transition-all active:scale-95 disabled:opacity-50"
+            >
+              {reqLoading ? <Loader2 className="animate-spin mx-auto" /> : "Request Passwords"}
+            </button>
+            <button 
+              onClick={() => setIsHistoryOpen(true)}
+              className="w-full bg-white text-slate-500 font-black py-6 rounded-[35px] tracking-widest uppercase border-2 border-slate-100 flex items-center justify-center gap-3 active:scale-95"
+            >
+              <HistoryIcon size={20} /> Maintenance Logs
+            </button>
           </div>
         ) : (
-          /* OUT OF RANGE VIEW */
-          <div className="p-12 text-center">
-            <XCircle size={64} className="mx-auto text-red-500 mb-4" />
-            <h2 className="text-xl font-black text-slate-800">OUT OF RANGE</h2>
-            <p className="text-slate-400 text-sm mt-2 leading-relaxed font-medium">
-              You are too far from the site location. Please be present at <span className="text-slate-800 font-bold">{device?.site_name}</span> to request access.
-            </p>
+          <div className="p-16 text-center">
+            <XCircle size={60} className="mx-auto text-red-500 mb-4" />
+            <h2 className="text-2xl font-[1000] text-slate-900 uppercase italic">Access Denied</h2>
+            <p className="text-slate-400 text-[10px] mt-4 font-black uppercase tracking-widest">Outside Site Radius</p>
           </div>
         )}
+
+        {/* --- ✅ SUCCESS DIALOG --- */}
+        {showSuccessDialog && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="w-full max-w-sm bg-white rounded-[40px] p-10 text-center shadow-2xl border border-white animate-in zoom-in-95 duration-300">
+              <div className="w-20 h-20 bg-emerald-50 rounded-[30px] flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 size={44} className="text-emerald-500" />
+              </div>
+              <h3 className="text-2xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none mb-4">Request Sent!</h3>
+              <p className="text-slate-500 text-sm font-bold leading-relaxed mb-8 uppercase text-[11px] tracking-widest">
+                Admin has been notified.<br/>Credentials will be shared on your WhatsApp shortly.
+              </p>
+              <button 
+                onClick={() => setShowSuccessDialog(false)}
+                className="w-full bg-slate-900 text-white font-black py-5 rounded-[25px] tracking-widest uppercase text-xs hover:bg-slate-800 transition-all active:scale-95"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
+
+        <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} sn={device?.sn} siteName={device?.site_name} />
       </div>
     </div>
   );

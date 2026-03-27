@@ -1,106 +1,213 @@
 "use client";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { Loader2, XCircle, CheckCircle2 } from "lucide-react";
+import { useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { MapPin, CheckCircle, Rocket, Loader2, Database, Disc, Navigation, MousePointer2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-export default function RequestPage() {
-  const params = useParams();
-  const deviceId = params.deviceId as string;
+export default function AddDevicePage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [isManual, setIsManual] = useState(false);
 
-  const [device, setDevice] = useState<any>(null);
-  const [mobile, setMobile] = useState("");
-  const [inRange, setInRange] = useState<boolean | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("loading");
+  const [formData, setFormData] = useState({
+    sn: '', site_name: '', category: 'DVR (Analog)',
+    model: '', ip_address: '', user_pass: '',
+    admin_pass: '', v_code: '', device_notes: '',
+    radius: '100',
+    latitude: '', longitude: '' 
+  });
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  const handleSave = async () => {
+    if (!formData.sn || !formData.site_name) return alert("⚠️ Please fill SN and Site Name!");
+    
+    setLoading(true);
+    let finalLat: number | null = null;
+    let finalLng: number | null = null;
+
+    if (isManual) {
+      // --- MANUAL MODE LOGIC ---
+      finalLat = parseFloat(formData.latitude.trim());
+      finalLng = parseFloat(formData.longitude.trim());
+      
+      if (isNaN(finalLat) || isNaN(finalLng)) {
+        alert("⚠️ Please enter valid Manual Latitude/Longitude!");
+        setLoading(false);
+        return;
+      }
+    } else {
+      // --- AUTO MODE LOGIC ---
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) => 
+          navigator.geolocation.getCurrentPosition(res, rej, { 
+            enableHighAccuracy: true, 
+            timeout: 10000 
+          })
+        );
+        finalLat = pos.coords.latitude;
+        finalLng = pos.coords.longitude;
+      } catch (e) { 
+        alert("📍 Auto-GPS fail! Map se coordinates nikal kar 'Manual Mode' use karein.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Database Update
+    const { error } = await supabase.from('devices').insert([
+      { 
+        sn: formData.sn,
+        site_name: formData.site_name,
+        category: formData.category,
+        model: formData.model,
+        ip_address: formData.ip_address,
+        user_pass: formData.user_pass,
+        admin_pass: formData.admin_pass,
+        v_code: formData.v_code,
+        device_notes: formData.device_notes,
+        radius: parseInt(formData.radius) || 200,
+        latitude: finalLat, 
+        longitude: finalLng 
+      }
+    ]);
+
+    if (error) {
+      alert("❌ Error: " + error.message);
+    } else {
+      alert("✅ Device Successfully Registered!");
+      router.push('/admin');
+    }
+    setLoading(false);
   };
-
-  useEffect(() => {
-    const init = async () => {
-      const { data } = await supabase.from("devices").select("*").eq("sn", deviceId).single();
-      if (!data) { setStatus("error"); return; }
-      setDevice(data);
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, data.latitude, data.longitude);
-          setInRange(dist <= 200); // 200 Meters Range
-          setStatus("idle");
-        },
-        () => { alert("Please enable GPS"); setStatus("idle"); }
-      );
-    };
-    init();
-  }, [deviceId]);
-
-  const handleRequest = async () => {
-    if (mobile.length < 10) return alert("Enter valid mobile number");
-    setStatus("loading");
-
-    const res = await fetch("/api/request-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile, device_id: device.sn }),
-    });
-
-    const data = await res.json();
-    if (data.success) setStatus("success");
-    else { alert("Error sending request"); setStatus("idle"); }
-  };
-
-  if (status === "loading") return <div className="min-h-screen flex items-center justify-center font-bold text-blue-600">VERIFYING...</div>;
-
-  if (status === "success") return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-6 text-center">
-      <div className="animate-in zoom-in duration-300">
-        <CheckCircle2 size={80} className="text-emerald-500 mx-auto mb-4" />
-        <h1 className="text-2xl font-black text-slate-800">REQUEST SENT!</h1>
-        <p className="text-slate-500 mt-2">Admin will review your location and contact you on WhatsApp shortly.</p>
-      </div>
-    </div>
-  );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-[40px] shadow-2xl border border-white overflow-hidden">
+    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-[480px] bg-white rounded-[50px] p-10 shadow-2xl border border-white relative overflow-hidden">
         
-        <div className="bg-[#f0f7ff] p-8 text-center">
-          <h1 className="text-2xl font-black text-blue-700 tracking-tight">{device?.site_name}</h1>
-          <p className="text-slate-400 font-bold text-xs mt-2 uppercase tracking-widest">Model: {device?.model}</p>
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-emerald-400"></div>
+
+        {/* Header */}
+        <div className="flex flex-col items-center mb-8 text-center">
+          <div className="bg-blue-50 p-5 rounded-[25px] mb-3 shadow-inner">
+             <Rocket className="text-blue-600" size={32} strokeWidth={2.5} />
+          </div>
+          <h1 className="text-[24px] font-[1000] text-slate-800 tracking-tight leading-none uppercase italic">Register Device</h1>
+          <p className="text-slate-400 text-[10px] font-black mt-2 tracking-widest uppercase opacity-60 italic">CCTV Inventory Portal</p>
         </div>
 
-        {inRange ? (
-          <div className="p-8 space-y-6">
-            <input 
-              type="tel" 
-              placeholder="Enter WhatsApp Number" 
-              className="w-full p-5 border-2 border-orange-400 rounded-2xl outline-none font-bold text-slate-700 focus:bg-orange-50/30 transition-all"
-              onChange={(e) => setMobile(e.target.value)}
-            />
+        {/* Form Body */}
+        <div className="space-y-5 max-h-[55vh] overflow-y-auto pr-3 custom-scroll mb-8 px-1">
+          
+          <InputField label="🔢 SERIAL NUMBER (SN)" placeholder="SN-XXXXX" 
+            value={formData.sn}
+            onChange={(v) => setFormData({...formData, sn: v.toUpperCase()})} highlight={true} />
+          
+          <InputField label="🏢 SITE NAME" placeholder="Ex: Shaikh Villa" 
+            onChange={(v) => setFormData({...formData, site_name: v})} />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-left font-bold">
+              <label className="text-[10px] text-slate-400 uppercase ml-4 tracking-widest leading-none">📁 Category</label>
+              <select 
+                className="w-full p-5 mt-2 bg-[#f8fafc] border-2 border-slate-50 rounded-[25px] outline-none text-[14px] font-bold text-slate-700 appearance-none cursor-pointer focus:border-blue-200 transition-all"
+                value={formData.category} 
+                onChange={(e) => setFormData({...formData, category: e.target.value})}
+              >
+                <option value="DVR (Analog)">📟 DVR</option>
+                <option value="NVR (IP System)">🖥️ NVR</option>
+                <option value="IP Camera">👁️ IP Cam</option>
+                <option value="Biometric">☝️ Bio</option>
+              </select>
+            </div>
+            <div className="text-left font-bold">
+              <label className="text-[10px] text-blue-400 uppercase ml-4 flex items-center gap-1 tracking-widest leading-none"><Disc size={12}/> Radius (M)</label>
+              <input 
+                type="number" 
+                value={formData.radius} 
+                className="w-full p-5 mt-2 bg-blue-50/30 border-2 border-blue-50 rounded-[25px] outline-none text-center font-black text-blue-600 focus:border-blue-200"
+                onChange={(e) => setFormData({...formData, radius: e.target.value})} 
+              />
+            </div>
+          </div>
+
+          {/* 📍 MODE TOGGLE: Auto vs Manual */}
+          <div className="bg-slate-50 p-2 rounded-[25px] flex gap-2 border border-slate-100 mt-2">
             <button 
-              onClick={handleRequest}
-              className="w-full bg-[#f1f5f9] hover:bg-emerald-50 text-slate-700 font-black py-5 rounded-[25px] border border-slate-100 transition-all uppercase tracking-wide"
+              type="button"
+              onClick={() => setIsManual(false)} 
+              className={`flex-1 py-3 rounded-full text-[10px] font-black uppercase transition-all duration-300 flex items-center justify-center gap-2 ${!isManual ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}
             >
-              Request Passwords
+              <Navigation size={14} /> Auto GPS
             </button>
-            <button className="w-full bg-[#e2e8f0] text-slate-500 font-black py-5 rounded-[25px] border border-slate-100 uppercase tracking-wide">
-              View Maintenance Logs
+            <button 
+              type="button"
+              onClick={() => setIsManual(true)} 
+              className={`flex-1 py-3 rounded-full text-[10px] font-black uppercase transition-all duration-300 flex items-center justify-center gap-2 ${isManual ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400'}`}
+            >
+              <MousePointer2 size={14} /> Manual Pin
             </button>
           </div>
-        ) : (
-          <div className="p-10 text-center">
-            <XCircle size={60} className="text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-black text-slate-800 tracking-tight">NOT AT SITE</h2>
-            <p className="text-slate-400 text-sm mt-2 font-medium leading-relaxed">You must be within 200m of the site to request credentials.</p>
+
+          {/* Manual Entry Fields */}
+          {isManual && (
+            <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <InputField label="📍 LATITUDE" placeholder="19.0760" onChange={(v) => setFormData({...formData, latitude: v})} />
+              <InputField label="📍 LONGITUDE" placeholder="72.8777" onChange={(v) => setFormData({...formData, longitude: v})} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <InputField label="🏷️ MODEL" placeholder="Model No." onChange={(v) => setFormData({...formData, model: v})} />
+            <InputField label="🌐 IP ADDRESS" placeholder="192.168..." onChange={(v) => setFormData({...formData, ip_address: v})} />
           </div>
-        )}
+
+          <div className="bg-slate-50 p-6 rounded-[35px] border border-slate-100 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <InputField label="👤 USER PASS" placeholder="****" onChange={(v) => setFormData({...formData, user_pass: v})} />
+              <InputField label="🔑 ADMIN PASS" placeholder="****" onChange={(v) => setFormData({...formData, admin_pass: v})} />
+            </div>
+            <InputField label="🔐 V-CODE" placeholder="P2P Verification Code" onChange={(v) => setFormData({...formData, v_code: v})} />
+          </div>
+
+          <div className="text-left font-bold pb-2">
+            <label className="text-[10px] text-slate-400 uppercase ml-4 tracking-widest leading-none">📝 DEVICE NOTES</label>
+            <textarea 
+              className="w-full p-5 mt-2 bg-[#f8fafc] border-2 border-slate-50 rounded-[25px] outline-none text-[14px] font-semibold text-slate-700 min-h-[100px] focus:border-blue-200 transition-all"
+              placeholder="Ex: HDD 2TB, 4CH DVR, Power backup issues..." 
+              onChange={(e) => setFormData({...formData, device_notes: e.target.value})} 
+            />
+          </div>
+        </div>
+
+        {/* Footer Action */}
+        <button 
+          onClick={handleSave} 
+          disabled={loading}
+          className="w-full bg-[#1a9e52] hover:bg-emerald-700 text-white font-[1000] py-6 rounded-[30px] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-50 text-[18px] uppercase tracking-widest border-b-4 border-emerald-800"
+        >
+          {loading ? <Loader2 className="animate-spin" size={24} /> : <Database size={24} />} 
+          {loading ? 'Processing...' : 'Register Device'}
+        </button>
       </div>
+
+      <style jsx global>{`
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
+      `}</style>
+    </div>
+  );
+}
+
+function InputField({ label, placeholder, onChange, value, highlight = false }: any) {
+  return (
+    <div className="w-full text-left font-bold">
+      <label className="text-[10px] text-slate-400 uppercase ml-4 tracking-widest leading-none">{label}</label>
+      <input 
+        className={`w-full p-5 mt-2 bg-[#f8fafc] border-2 rounded-[25px] outline-none text-[15px] font-bold text-slate-700 transition-all ${highlight ? 'border-emerald-100 focus:border-emerald-400' : 'border-slate-50 focus:border-blue-200'}`}
+        placeholder={placeholder} 
+        value={value}
+        onChange={(e) => onChange(e.target.value)} 
+      />
     </div>
   );
 }
