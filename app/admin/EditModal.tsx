@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { 
   X, Save, ShieldCheck, MapPin, Info, 
-  Eye, EyeOff, Navigation, Loader2, Database, Hash, Monitor, ppp
+  Eye, EyeOff, Navigation, Loader2, Database, Hash, Monitor 
 } from "lucide-react";
 
 export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving, setDevice }: any) {
