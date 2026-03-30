@@ -7,6 +7,7 @@ import {
   CheckCircle2, Smartphone, History as HistoryIcon, Lock, AlertCircle, MessageSquare
 } from "lucide-react";
 import HistoryModal from "../../admin/HistoryModal";
+import MasterDialog from "@/lib/components/MasterDialog";
 
 export default function RequestPage() {
   const params = useParams();
@@ -15,15 +16,16 @@ export default function RequestPage() {
 
   const [device, setDevice] = useState<any>(null);
   const [mobile, setMobile] = useState("");
-  const [message, setMessage] = useState(""); // 📩 Naya Message State
+  const [message, setMessage] = useState("");
   const [inRange, setInRange] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [reqLoading, setReqLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null); 
-  
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [dialog, setDialog] = useState({
+    isOpen: false, title: "", message: "", type: "info" as any
+  });
 
   useEffect(() => {
     const initializePage = async () => {
@@ -40,7 +42,6 @@ export default function RequestPage() {
       
       if (deviceData) {
         setDevice(deviceData);
-        // Admin bypass logic
         if (role === "super_admin" || role === "engineer") {
           setInRange(true); setLoading(false); return;
         }
@@ -63,33 +64,40 @@ export default function RequestPage() {
   }, [deviceId]);
 
   const handleRequest = async () => {
-    // 🚩 Validation Checks
     if (!mobile || mobile.length !== 10 || !/^[6-9]\d{9}$/.test(mobile)) {
-      setErrorMsg("Kripya sahi 10-digit WhatsApp number daalein.");
+      setDialog({ isOpen: true, title: "Invalid Input", message: "Please provide a valid 10-digit WhatsApp number.", type: "warning" });
       return;
     }
     
     setReqLoading(true);
     try {
-      // 1. Supabase mein Request Insert karein
-      const { error } = await supabase
-        .from("requests")
-        .insert([{ 
-          device_sn: device.device_sn, 
-          site_name: device.site_name, 
-          mobile: mobile, 
-          message: message, // 📩 User ka message DB mein ja raha hai
-          status: 'pending' 
-        }]);
+      // 1. Database Entry
+      await supabase.from("requests").insert([{ 
+        device_sn: device.device_sn, 
+        site_name: device.site_name, 
+        mobile: mobile, 
+        message: message, 
+        status: 'pending' 
+      }]);
 
-      if (error) throw error;
+      // 🚩 2. TRIGGER EMAIL API (Ye missing tha)
+      const res = await fetch("/api/request-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile, device_id: device.device_sn })
+      });
 
-      // 2. Success UI dikhayein
-      setShowSuccessDialog(true);
-      setMobile("");
-      setMessage(""); // Input clear karein
+      if (!res.ok) throw new Error("Email dispatch failed");
+
+      setDialog({ 
+        isOpen: true, 
+        title: "Request Sent", 
+        message: "Your request has been successfully dispatched to the admin terminal. Please wait for the WhatsApp message.", 
+        type: "success" 
+      });
+      setMobile(""); setMessage("");
     } catch (err) {
-      setErrorMsg("System error! Request bhejte waqt dikkat aayi hai.");
+      setDialog({ isOpen: true, title: "System Failure", message: "Internal server error. Access dispatch failed.", type: "danger" });
     } finally {
       setReqLoading(false);
     }
@@ -103,88 +111,61 @@ export default function RequestPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4 font-sans text-left">
-      <div className="w-full max-w-[480px] bg-white rounded-[50px] shadow-2xl overflow-hidden relative border border-white">
+    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-0 sm:p-4 font-sans text-left">
+      <div className="w-full max-w-[480px] bg-white h-screen sm:h-auto sm:rounded-[50px] shadow-2xl overflow-hidden relative border-t sm:border border-white flex flex-col">
         
-        {/* HEADER */}
-        <div className="bg-[#f0f7ff] p-12 text-center border-b border-blue-50 relative">
+        <div className="bg-[#f0f7ff] p-8 sm:p-12 text-center border-b border-blue-50 relative shrink-0">
           {(userRole === "super_admin" || userRole === "engineer") && (
             <button onClick={() => router.push('/admin')} className={`absolute top-4 right-6 px-4 py-2 rounded-full text-[9px] font-[1000] uppercase tracking-widest shadow-xl flex items-center gap-2 active:scale-90 transition-all text-white ${userRole === 'super_admin' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-              {userRole === 'super_admin' ? <ShieldCheck size={12} /> : <UserIcon size={12} />}
-              {userRole === 'super_admin' ? 'Super Admin' : 'Engineer'}
+              <ShieldCheck size={12} /> {userRole}
             </button>
           )}
-          <h1 className="text-[34px] font-[1000] text-slate-900 tracking-tighter uppercase italic mt-4 leading-tight">{device?.site_name}</h1>
-          <p className="text-slate-400 font-bold text-[10px] tracking-[3px] uppercase mt-2">Secure Node Access</p>
+          <h1 className="text-[28px] sm:text-[34px] font-[1000] text-slate-900 tracking-tighter uppercase italic mt-4 leading-tight truncate">{device?.site_name}</h1>
+          <p className="text-slate-400 font-bold text-[9px] tracking-[3px] uppercase mt-2">Secure Terminal Access</p>
         </div>
 
-        {/* MAIN UI */}
-        {inRange ? (
-          <div className="p-10 space-y-5">
-            {/* Number Input */}
-            <div className="relative group">
-              <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500" size={20} />
-              <input 
-                type="tel" maxLength={10} placeholder="WhatsApp Number" 
-                className="w-full py-6 pl-16 pr-8 bg-slate-50 border-2 border-slate-100 rounded-[30px] outline-none font-black focus:border-blue-500 transition-all text-lg"
-                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} value={mobile}
-              />
+        <div className="flex-1 p-6 sm:p-10 overflow-y-auto">
+          {inRange ? (
+            <div className="space-y-6 pb-10">
+              <div className="relative group">
+                <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500" size={20} />
+                <input 
+                  type="tel" maxLength={10} placeholder="WhatsApp Number" 
+                  className="w-full py-5 sm:py-6 pl-16 pr-8 bg-slate-50 border-2 border-slate-100 rounded-[25px] sm:rounded-[30px] outline-none font-black focus:border-blue-500 transition-all text-lg"
+                  onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} value={mobile}
+                />
+              </div>
+
+              <div className="relative group">
+                <MessageSquare className="absolute left-6 top-6 text-slate-300 group-focus-within:text-blue-500" size={20} />
+                <textarea 
+                  placeholder="Optional Note / Issue" 
+                  rows={3}
+                  className="w-full py-6 pl-16 pr-8 bg-slate-50 border-2 border-slate-100 rounded-[25px] sm:rounded-[30px] outline-none font-bold text-slate-600 focus:border-blue-500 transition-all text-sm resize-none"
+                  onChange={(e) => setMessage(e.target.value)} value={message}
+                />
+              </div>
+              
+              <button onClick={handleRequest} disabled={reqLoading} className="w-full bg-blue-600 text-white font-[1000] py-6 rounded-[30px] tracking-[2px] uppercase shadow-xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3">
+                {reqLoading ? <Loader2 className="animate-spin" /> : <><Lock size={20} /> INITIALIZE ACCESS</>}
+              </button>
+
+              <button onClick={() => setIsHistoryOpen(true)} className="w-full bg-white text-slate-400 font-black py-4 rounded-[30px] border-2 border-slate-100 flex items-center justify-center gap-3 active:scale-95 transition-all text-[10px] uppercase tracking-widest">
+                <HistoryIcon size={16} /> Site History
+              </button>
             </div>
-
-            {/* 📩 NEW: Optional Message Box */}
-            <div className="relative group">
-              <MessageSquare className="absolute left-6 top-6 text-slate-300 group-focus-within:text-blue-500" size={20} />
-              <textarea 
-                placeholder="Koi samasya ya note? (Optional)" 
-                rows={3}
-                className="w-full py-6 pl-16 pr-8 bg-slate-50 border-2 border-slate-100 rounded-[30px] outline-none font-bold text-slate-600 focus:border-blue-500 transition-all text-sm resize-none"
-                onChange={(e) => setMessage(e.target.value)} value={message}
-              />
+          ) : (
+            <div className="py-16 text-center space-y-6">
+               <XCircle size={64} className="text-red-500 mx-auto opacity-20" />
+               <h2 className="text-2xl font-[1000] uppercase italic">Out of Range</h2>
+               <p className="text-slate-400 text-[10px] font-bold uppercase leading-relaxed tracking-widest px-10">Access denied. You must be at the physical location to request credentials.</p>
+               <button onClick={() => window.location.reload()} className="bg-slate-900 text-white px-10 py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-90 transition-all">Retry GPS Node</button>
             </div>
-            
-            <button onClick={handleRequest} disabled={reqLoading} className="w-full bg-blue-600 text-white font-[1000] py-6 rounded-[35px] tracking-widest uppercase shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3">
-              {reqLoading ? <Loader2 className="animate-spin" /> : <><Lock size={20} /> Get Access Details</>}
-            </button>
+          )}
+        </div>
 
-            <button onClick={() => setIsHistoryOpen(true)} className="w-full bg-white text-slate-500 font-black py-4 rounded-[35px] border-2 border-slate-50 flex items-center justify-center gap-3 active:scale-95 transition-all text-xs uppercase tracking-widest">
-              <HistoryIcon size={18} /> Service History
-            </button>
-          </div>
-        ) : (
-          <div className="p-16 text-center">
-             <XCircle size={60} className="text-red-500 mx-auto mb-4" />
-             <h2 className="text-2xl font-[1000] uppercase italic">Out of Range</h2>
-             <p className="text-slate-500 text-[11px] mt-4 font-bold uppercase leading-relaxed">Aap location se door hain.<br/>Wahan pahunch kar scan karein.</p>
-             <button onClick={() => window.location.reload()} className="mt-8 bg-slate-900 text-white px-8 py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest">Retry GPS</button>
-          </div>
-        )}
-
-        {/* MODALS */}
         <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} sn={device?.device_sn} siteName={device?.site_name} />
-        
-        {/* SUCCESS DIALOG */}
-        {showSuccessDialog && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/70 backdrop-blur-md">
-            <div className="w-full max-w-sm bg-white rounded-[40px] p-10 text-center shadow-2xl">
-              <CheckCircle2 size={44} className="text-emerald-500 mx-auto mb-6" />
-              <h3 className="text-2xl font-[1000] uppercase italic mb-2">Success!</h3>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-relaxed mb-8">Request bhej di gayi hai.<br/>Wait for WhatsApp Message.</p>
-              <button onClick={() => setShowSuccessDialog(false)} className="w-full bg-slate-900 text-white font-black py-5 rounded-3xl uppercase text-xs">Got it</button>
-            </div>
-          </div>
-        )}
-
-        {/* ERROR DIALOG */}
-        {errorMsg && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/70 backdrop-blur-md">
-            <div className="w-full max-w-sm bg-white rounded-[40px] p-10 text-center shadow-2xl border-t-8 border-red-500">
-              <AlertCircle size={40} className="text-red-500 mx-auto mb-4" />
-              <p className="text-slate-600 font-bold mb-8 px-4">{errorMsg}</p>
-              <button onClick={() => setErrorMsg(null)} className="w-full bg-red-600 text-white font-black py-5 rounded-3xl uppercase text-xs">Fix It</button>
-            </div>
-          </div>
-        )}
-
+        <MasterDialog isOpen={dialog.isOpen} onClose={() => setDialog(prev => ({ ...prev, isOpen: false }))} onConfirm={() => setDialog(prev => ({ ...prev, isOpen: false }))} title={dialog.title} message={dialog.message} type={dialog.type} confirmText="Acknowledge" />
       </div>
     </div>
   );
