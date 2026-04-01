@@ -99,40 +99,42 @@ export default function AdminCentral() {
     finally { setLoading(false); }
   };
 
-  // ✅ DATABASE UPDATE LOGIC (Triggered by Master Dialog)
-  const handleUpdateDevice = async () => {
-    if (!selectedDevice) return;
-    setDialog(prev => ({ ...prev, isOpen: false })); // Dialog band karein
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from("devices")
-        .update({
-          site_name: selectedDevice.site_name,
-          category: selectedDevice.category,
-          model: selectedDevice.model,
-          ip_address: selectedDevice.ip_address,
-          user_pass: selectedDevice.user_pass,
-          admin_pass: selectedDevice.admin_pass,
-          v_code: selectedDevice.v_code,
-          latitude: selectedDevice.latitude ? parseFloat(selectedDevice.latitude) : null,
-          longitude: selectedDevice.longitude ? parseFloat(selectedDevice.longitude) : null,
-          radius: selectedDevice.radius ? parseFloat(selectedDevice.radius) : 100,
-          device_notes: selectedDevice.device_notes
-        })
-        .eq("device_sn", selectedDevice.device_sn);
+  // ✅ DATABASE UPDATE LOGIC (Final Fixed for All Fields)
+const handleUpdateDevice = async () => {
+  if (!selectedDevice) return;
+  setDialog(prev => ({ ...prev, isOpen: false })); 
+  setIsSaving(true);
+  try {
+    const { error } = await supabase
+      .from("devices")
+      .update({
+        site_name: selectedDevice.site_name,
+        category: selectedDevice.category,
+        model: selectedDevice.model,
+        ip_address: selectedDevice.ip_address,
+        user_name: selectedDevice.user_name,     // 🚩 Added mapping
+        user_pass: selectedDevice.user_pass,
+        admin_name: selectedDevice.admin_name,   // 🚩 Added mapping
+        admin_pass: selectedDevice.admin_pass,
+        v_code: selectedDevice.v_code,
+        latitude: selectedDevice.latitude ? parseFloat(selectedDevice.latitude.toString()) : null,
+        longitude: selectedDevice.longitude ? parseFloat(selectedDevice.longitude.toString()) : null,
+        radius: selectedDevice.radius ? parseFloat(selectedDevice.radius.toString()) : 100,
+        device_notes: selectedDevice.device_notes // 🚩 Mapping Fixed
+      })
+      .eq("device_sn", selectedDevice.device_sn);
 
-      if (error) throw error;
-      
-      setIsModalOpen(false);
-      setSelectedDevice(null);
-      fetchData(); 
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    if (error) throw error;
+    
+    setIsModalOpen(false);
+    setSelectedDevice(null);
+    fetchData(); 
+  } catch (err: any) {
+    alert(`Update Error: ${err.message}`);
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   // --- LOGOUT LOGIC ---
   const handleLogout = async () => {
@@ -308,7 +310,7 @@ export default function AdminCentral() {
               device={selectedDevice} 
               setDevice={setSelectedDevice} 
               onClose={() => { setIsModalOpen(false); setSelectedDevice(null); }} 
-              onUpdate={triggerUpdateConfirm} // 🚩 FIXED: Master Dialog trigger
+              onUpdate={() => handleUpdateDevice()} // 🚩 FIXED: Master Dialog trigger
               isSaving={isSaving} 
             />
             <HistoryModal isOpen={isHistoryOpen} onClose={() => { setIsHistoryOpen(false); setSelectedDevice(null); }} sn={selectedDevice?.device_sn} siteName={selectedDevice?.site_name} />
