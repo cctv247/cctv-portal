@@ -35,11 +35,23 @@ export default function AddDevicePage() {
     v_code: '', device_notes: '', radius: '100', latitude: '', longitude: '' 
   });
 
-  // 🛡️ BLUEPRINT HMODAL: Browser Settings (No Overflow)
+  // 🛡️ BLUEPRINT HMODAL: Browser Environment Setup
   useEffect(() => {
+    // Scroll Lock on Body to force internal scroll (helps hide browser UI on mobile)
     document.body.style.overflow = 'hidden';
     document.documentElement.style.scrollBehavior = 'smooth';
-    return () => { document.body.style.overflow = 'unset'; };
+    
+    // Fix for mobile browser height (100dvh)
+    const setHeight = () => {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    };
+    window.addEventListener('resize', setHeight);
+    setHeight();
+
+    return () => { 
+      document.body.style.overflow = 'unset'; 
+      window.removeEventListener('resize', setHeight);
+    };
   }, []);
 
   const handleSave = async () => {
@@ -110,15 +122,15 @@ export default function AddDevicePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900/10 flex items-stretch sm:items-center justify-center p-0 animate-in fade-in duration-500 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-slate-900/10 flex items-stretch sm:items-center justify-center p-0 animate-in fade-in duration-500 backdrop-blur-sm z-[100]">
       
-      {/* ✨ HMODAL MAIN CONTAINER */}
-      <div className="w-full max-w-2xl bg-white h-[100dvh] sm:h-auto sm:max-h-[94vh] sm:rounded-[55px] shadow-[0_50px_100px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-700 overscroll-none">
+      {/* ✨ HMODAL MAIN CONTAINER: Set to 100dvh for mobile browser sync */}
+      <div className="w-full max-w-2xl bg-white h-[100dvh] sm:h-auto sm:max-h-[96vh] sm:rounded-[55px] shadow-[0_50px_100px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-700">
         
-        {/* 🏗️ HMODAL STICKY HEADER (Unchanged Labels) */}
-        <div className="sticky top-0 z-[100] bg-white/90 backdrop-blur-xl border-b border-slate-100 p-6 flex justify-between items-center shrink-0 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
+        {/* 🏗️ HMODAL STICKY HEADER */}
+        <div className="sticky top-0 z-[110] bg-white/90 backdrop-blur-xl border-b border-slate-100 p-6 flex justify-between items-center shrink-0 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
           <div className="flex items-center gap-4 italic text-left">
-            <div className="bg-blue-600 p-4 rounded-[22px] text-white shadow-xl shadow-blue-100">
+            <div className="bg-blue-600 p-4 rounded-[22px] text-white shadow-xl shadow-blue-100 ">
               <Cpu size={24} strokeWidth={2.5} />
             </div>
             <div>
@@ -131,7 +143,7 @@ export default function AddDevicePage() {
           </button>
         </div>
 
-        {/* 📝 HMODAL SCROLLABLE BODY */}
+        {/* 📝 HMODAL SCROLLABLE BODY: overscroll-contain hides browser UI on scroll down */}
         <div className="flex-1 overflow-y-auto px-6 sm:px-10 space-y-10 pt-8 pb-44 text-left overscroll-contain touch-pan-y custom-scroll bg-[#fcfdfe]">
           
           <div className="space-y-8 animate-in slide-in-from-left duration-500">
@@ -145,7 +157,7 @@ export default function AddDevicePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3 text-left">
+            <div className="space-y-3">
               <label className="text-[9px] font-black uppercase text-slate-400 ml-5 tracking-[3px] italic">Category</label>
               <div className="relative">
                 <select className="w-full p-5 bg-white border-2 border-slate-100 rounded-[28px] font-black italic text-slate-800 text-[12px] outline-none appearance-none cursor-pointer focus:border-blue-500 shadow-sm transition-all"
@@ -158,7 +170,7 @@ export default function AddDevicePage() {
                 <Layers className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
               </div>
             </div>
-            <div className="space-y-3 text-left">
+            <div className="space-y-3">
               <label className="text-[9px] font-black uppercase text-blue-500 ml-5 tracking-[3px] italic flex items-center gap-1"><Disc size={10}/> Safe Radius</label>
               <input type="number" value={formData.radius} className="w-full p-5 bg-blue-50/30 border-2 border-blue-100 rounded-[28px] outline-none text-center font-black text-blue-600 focus:border-blue-500 transition-all shadow-inner text-sm"
                 onChange={(e) => setFormData({...formData, radius: e.target.value})} />
@@ -186,7 +198,7 @@ export default function AddDevicePage() {
             <InputField label="Static IP" icon="🌐" placeholder="192.168.1.XX" value={formData.ip_address} onChange={(v: string) => setFormData({...formData, ip_address: v})} />
           </div>
 
-          <div className="bg-white p-8 rounded-[45px] border border-slate-100 shadow-2xl shadow-slate-200/50 space-y-8 relative overflow-hidden">
+          <div className="bg-white p-8 rounded-[45px] border border-slate-100 shadow-2xl shadow-slate-200/50 space-y-8 relative overflow-hidden group">
             <div className="flex justify-between items-center relative z-10">
               <div className="flex items-center gap-3 text-blue-600">
                 <ShieldCheck size={22} strokeWidth={2.5}/>
@@ -209,14 +221,14 @@ export default function AddDevicePage() {
             </div>
           </div>
 
-          <div className="space-y-4 text-left">
+          <div className="space-y-4">
             <label className="text-[9px] font-black uppercase text-slate-400 ml-6 tracking-[3px] italic flex items-center gap-2"><Info size={12}/> Technical Remarks</label>
             <textarea className="w-full p-8 bg-white border-2 border-slate-100 rounded-[40px] outline-none text-sm font-bold text-slate-700 min-h-[160px] focus:border-blue-500 transition-all resize-none shadow-inner"
               placeholder="Enter critical Device details..." value={formData.device_notes} onChange={(e) => setFormData({...formData, device_notes: e.target.value})} />
           </div>
 
-          {/* 🚩 HMODAL FOOTER (Unchanged Labels) */}
-          <div className="pt-10 pb-40 relative z-[50]">
+          {/* 🚩 HMODAL FOOTER ACTION */}
+          <div className="pt-10 pb-40">
             <button onClick={handleSave} disabled={loading}
               className="w-full bg-[#1a9e52] text-white font-[1000] py-8 rounded-[38px] flex items-center justify-center gap-4 shadow-[0_25px_60px_rgba(26,158,82,0.35)] active:scale-95 transition-all disabled:opacity-50 text-[16px] uppercase tracking-[5px] border-b-[8px] border-emerald-900 italic">
               {loading ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle size={24} />} 
@@ -242,7 +254,7 @@ function InputField({ label, placeholder, onChange, value, highlight = false, ic
       <input 
         type={type}
         className={`w-full p-5 border-2 rounded-[28px] font-black italic text-slate-800 text-[13px] outline-none transition-all shadow-sm active:scale-[0.99] ${
-          light ? 'bg-slate-50 border-transparent focus:border-blue-200 shadow-inner' : highlight ? 'bg-white border-emerald-100 focus:border-emerald-500 shadow-emerald-50' : 'bg-white border-slate-100 focus:border-blue-500'
+          light ? 'bg-slate-50 border-transparent focus:border-blue-200' : highlight ? 'bg-white border-emerald-100 focus:border-emerald-500 shadow-emerald-50' : 'bg-white border-slate-100 focus:border-blue-500'
         }`}
         placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
