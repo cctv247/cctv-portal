@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   X, Save, ShieldCheck, MapPin, Info, 
-  Eye, EyeOff, Navigation, Loader2, Cpu, Hash, Layers 
+  Eye, EyeOff, Navigation, Loader2, Cpu, Hash, Layers, Target
 } from "lucide-react";
 
 interface DeviceData {
@@ -52,33 +52,33 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
       (pos) => {
         setDevice({ 
           ...device, 
-          latitude: pos.coords.latitude.toFixed(6), 
-          longitude: pos.coords.longitude.toFixed(6) 
+          latitude: pos.coords.latitude.toFixed(8), // 🛰️ Ultra High Precision
+          longitude: pos.coords.longitude.toFixed(8) 
         });
         setIsLocating(false);
       },
       () => setIsLocating(false),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
   return (
     <div className="fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-md flex items-stretch sm:items-center justify-center p-0 animate-in fade-in duration-300">
       
-      {/* 📱 SHELL: Full Height with Browser Bar Auto-Hide Signal */}
+      {/* 📱 SHELL CONTAINER */}
       <div 
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
         className="bg-[#fcfdfe] w-full max-w-xl sm:h-auto sm:max-h-[95vh] sm:rounded-[45px] shadow-2xl flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-500"
       >
         
-        {/* 🏗️ STICKY HEADER (No Line Look) */}
+        {/* 🏗️ STICKY HEADER */}
         <div className="sticky top-0 z-[110] bg-white/95 backdrop-blur-xl p-4 flex justify-between items-center shrink-0 pt-[calc(env(safe-area-inset-top)+1rem)]">
           <div className="flex items-center gap-3 italic text-left">
             <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-100">
               <Cpu size={20} />
             </div>
             <div>
-              <h3 className="text-lg font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none">Edit Device Details</h3>
+              <h3 className="text-lg font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none">Edit Master</h3>
               <p className="text-[9px] font-black text-blue-500 uppercase tracking-[3px] mt-1 leading-none italic">Modern Enterprises</p>
             </div>
           </div>
@@ -87,7 +87,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
           </button>
         </div>
 
-        {/* 📝 SCROLLABLE BODY (Momentum Enabled) */}
+        {/* 📝 SCROLLABLE BODY */}
         <div className="flex-1 overflow-y-auto px-6 sm:px-10 space-y-7 pt-6 pb-44 text-left overscroll-contain touch-pan-y custom-scroll bg-[#fcfdfe]">
           
           {/* Identity Section */}
@@ -95,12 +95,12 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2">
               <Hash size={12} className="text-blue-500" /> Device SN
             </label>
-            <div className="p-5 bg-slate-50 border-2 border-slate-100 border-dashed rounded-[25px] font-mono font-black text-slate-500 text-[11px] text-center shadow-inner break-all select-all italic">
+            <div className="p-4 bg-slate-50 border-2 border-slate-100 border-dashed rounded-[22px] font-mono font-black text-slate-500 text-[11px] text-center shadow-inner italic break-all select-all">
               {device.device_sn}
             </div>
           </div>
 
-          {/* Primary Form Fields */}
+          {/* Form Fields Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <InputField label="Site Name" icon="🏢" value={device.site_name} onChange={(v:any) => handleChange('site_name', v)} />
             
@@ -124,7 +124,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             <InputField label="Network IP" icon="🌐" value={device.ip_address} onChange={(v:any) => handleChange('ip_address', v)} />
           </div>
 
-          {/* Security Vault Section */}
+          {/* 🔐 Security Credentials */}
           <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-xl space-y-6 relative overflow-hidden group">
             <div className="flex justify-between items-center relative z-10 px-1">
               <span className="text-[10px] font-[1000] text-blue-600 uppercase tracking-widest italic flex items-center gap-2">
@@ -140,30 +140,49 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
               <InputField label="Admin ID" icon="🛠️" value={device.admin_name} onChange={(v:any) => handleChange('admin_name', v)} light />
               <InputField label="Admin Pass" icon="🔒" type={showPass ? "text" : "password"} value={device.admin_pass} onChange={(v:any) => handleChange('admin_pass', v)} light />
             </div>
-            <div className="relative z-10 pt-4 border-t border-slate-50">
-               <InputField label="Verification Code" icon="🛡️" type={showPass ? "text" : "password"} value={device.v_code} onChange={(v:any) => handleChange('v_code' as any, v)} light />
-            </div>
           </div>
 
-          {/* GPS Section */}
-          <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-xl space-y-5">
-            <div className="flex justify-between items-center px-1">
-              <span className="text-[10px] font-[1000] text-red-600 uppercase tracking-widest italic flex items-center gap-2">
-                <MapPin size={16} /> GPS Geofence
-              </span>
+          {/* 📍 GPS SECTION (RE-ENGINEERED) */}
+          <div className="bg-white p-7 rounded-[40px] border border-slate-100 shadow-xl space-y-6 relative overflow-hidden">
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className="text-[11px] font-[1000] text-red-600 uppercase tracking-[2px] italic flex items-center gap-2">
+                  <MapPin size={18} /> Satellite Sync
+                </span>
+                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest ml-7">Geofence Accuracy</span>
+              </div>
               <button onClick={handleGetLocation} disabled={isLocating} 
-                className="text-[9px] font-black bg-slate-900 text-white px-4 py-2.5 rounded-xl active:scale-95 shadow-md flex items-center gap-2">
-                {isLocating ? <Loader2 size={12} className="animate-spin" /> : <Navigation size={12} />} FETCH GPS
+                className="bg-slate-900 text-white px-5 py-3 rounded-2xl active:scale-95 shadow-2xl flex items-center gap-2 transition-all group border-b-4 border-black">
+                {isLocating ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} className="group-hover:translate-x-1 transition-transform" />}
+                <span className="text-[10px] font-black uppercase italic tracking-widest">Update GPS</span>
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-3 font-mono">
-               {['latitude', 'longitude', 'radius'].map((key) => (
-                 <div key={key} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                   <label className="text-[8px] font-black text-slate-400 block mb-1 italic uppercase">{key.slice(0,3)}</label>
-                   <input value={device[key] || ""} onChange={e => handleChange(key as any, e.target.value)} 
-                    className="w-full bg-transparent text-center font-black text-[11px] text-slate-800 outline-none" />
+
+            {/* GPS Input Grid */}
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                  <label className="text-[9px] font-black text-slate-400 ml-4 italic uppercase">📍 Latitude</label>
+                  <input value={device.latitude || ""} onChange={e => handleChange('latitude', e.target.value)} 
+                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-mono font-black text-[13px] text-slate-800 outline-none shadow-inner focus:border-red-200 transition-all" placeholder="0.000000" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label className="text-[9px] font-black text-slate-400 ml-4 italic uppercase">📍 Longitude</label>
+                  <input value={device.longitude || ""} onChange={e => handleChange('longitude', e.target.value)} 
+                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-mono font-black text-[13px] text-slate-800 outline-none shadow-inner focus:border-red-200 transition-all" placeholder="0.000000" />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                 <label className="text-[9px] font-black text-slate-400 ml-4 italic uppercase flex items-center gap-2">
+                   <Target size={12} className="text-blue-500" /> Safe Radius (Meters)
+                 </label>
+                 <div className="relative">
+                   <input type="number" value={device.radius || "100"} onChange={e => handleChange('radius', e.target.value)} 
+                     className="w-full p-4 bg-blue-50/30 border border-blue-100 rounded-2xl font-black text-[13px] text-blue-900 outline-none shadow-sm focus:border-blue-400 transition-all pl-12" />
+                   <div className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-blue-300 text-xs italic">M</div>
                  </div>
-               ))}
+              </div>
             </div>
           </div>
 
@@ -179,7 +198,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             />
           </div>
 
-          {/* 🚩 FOOTER ACTION (Non-Sticky for Momentum) */}
+          {/* 🚩 FOOTER ACTION */}
           <div className="pt-6 pb-20">
             <button 
               onClick={(e) => { e.preventDefault(); onUpdate(); }} disabled={isSaving}
@@ -193,11 +212,6 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
 
         </div>
       </div>
-
-      <style jsx global>{`
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-      `}</style>
     </div>
   );
 }
@@ -205,7 +219,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
 function InputField({ label, icon, value, onChange, type = "text", light = false }: any) {
   return (
     <div className="space-y-1.5 text-left">
-      <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2 italic">
+      <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2">
         <span className="text-base opacity-70">{icon}</span> {label}
       </label>
       <input 
