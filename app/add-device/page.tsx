@@ -35,7 +35,7 @@ export default function AddDevicePage() {
     v_code: 'Wqa...', device_notes: '', radius: '100', latitude: '', longitude: '' 
   });
 
-  // 🛡️ BLUEPRINT HMODAL: Browser Environment Setup (Scroll Lock & Hide UI)
+  // 🛡️ BLUEPRINT HMODAL: Browser UI Control
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const setHeight = () => {
@@ -44,7 +44,6 @@ export default function AddDevicePage() {
     };
     window.addEventListener('resize', setHeight);
     setHeight();
-
     return () => { 
       document.body.style.overflow = 'unset'; 
       window.removeEventListener('resize', setHeight);
@@ -62,26 +61,36 @@ export default function AddDevicePage() {
     }
     
     setLoading(true);
-    let finalLat = isManual ? parseFloat(formData.latitude) : null;
-    let finalLng = isManual ? parseFloat(formData.longitude) : null;
 
-    if (!isManual) {
+    // 🎯 HIGH PRECISION GPS LOGIC (Correcting 19.1669 to High Precision)
+    let finalLat: number | null = null;
+    let finalLng: number | null = null;
+
+    if (isManual) {
+      finalLat = parseFloat(formData.latitude);
+      finalLng = parseFloat(formData.longitude);
+    } else {
       try {
         const pos = await new Promise<GeolocationPosition>((res, rej) => 
-          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+          navigator.geolocation.getCurrentPosition(res, rej, { 
+            enableHighAccuracy: true, // 🛰️ Satellite connection force karega
+            timeout: 10000 
+          })
         );
-        finalLat = pos.coords.latitude;
+        // Precise conversion to high-precision floats
+        finalLat = pos.coords.latitude; 
         finalLng = pos.coords.longitude;
       } catch (e) { 
         setIsManual(true);
-        setLoading(false); return;
+        setLoading(false); 
+        return; 
       }
     }
 
     const { error } = await supabase.from('devices').insert([{ 
       ...formData, 
       device_sn: formData.device_sn.trim().toUpperCase(), 
-      latitude: finalLat, 
+      latitude: finalLat, // DB will receive full precision
       longitude: finalLng,
       radius: parseInt(formData.radius) || 200 
     }]);
@@ -89,21 +98,19 @@ export default function AddDevicePage() {
     if (error) {
       setDialog({ isOpen: true, title: "Registry Error", message: error.message, type: "danger", onConfirm: () => setDialog(prev => ({...prev, isOpen: false})) });
     } else {
-      setDialog({ isOpen: true, title: "Device Synchronized", message: `Device ${formData.site_name} is now live in the Modern Cloud.`, type: "success", onConfirm: () => router.push('/admin') });
+      setDialog({ isOpen: true, title: "Device Synchronized", message: `Device ${formData.site_name} is now live with precise coordinates.`, type: "success", onConfirm: () => router.push('/admin') });
     }
     setLoading(false);
   };
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-stretch sm:items-center justify-center z-[100] backdrop-blur-sm">
-      
-      {/* ✨ HMODAL MAIN CONTAINER: Slim Spacing Edition */}
       <div 
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
         className="w-full max-w-xl bg-white sm:h-auto sm:max-h-[96vh] sm:rounded-[45px] shadow-2xl flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-500"
       >
         
-        {/* 🏗️ HMODAL STICKY HEADER */}
+        {/* 🏗️ HEADER (No Line) */}
         <div className="sticky top-0 z-[110] bg-white/95 backdrop-blur-xl p-4 flex justify-between items-center shrink-0 pt-[calc(env(safe-area-inset-top)+1rem)]">
           <div className="flex items-center gap-3 italic text-left">
             <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-100">
@@ -119,28 +126,24 @@ export default function AddDevicePage() {
           </button>
         </div>
 
-        {/* 📝 HMODAL SCROLLABLE BODY */}
+        {/* 📝 BODY */}
         <div className="flex-1 overflow-y-auto px-6 sm:px-10 space-y-7 pt-6 pb-40 text-left overscroll-contain touch-pan-y custom-scroll bg-[#fcfdfe]">
           
-          {/* IDENTITY SECTION */}
           <div className="grid gap-6">
             <InputField label="Device Serial Number" icon="🔢" placeholder="AH1857798" value={formData.device_sn} highlight onChange={(v:any) => setFormData({...formData, device_sn: v})} />
             <InputField label="Site / Client Identifier" icon="🏢" placeholder="Wazahul Villa" value={formData.site_name} onChange={(v:any) => setFormData({...formData, site_name: v})} />
           </div>
 
-          {/* CATEGORY & RADIUS */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5 text-left">
               <label className="text-[9px] font-black uppercase text-slate-400 ml-3 tracking-widest italic flex items-center gap-1.5"><Layers size={12}/> Category</label>
-              <div className="relative">
-                <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black italic text-slate-800 text-[11px] outline-none appearance-none focus:border-blue-500 shadow-sm transition-all"
-                  value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
-                  <option value="DVR (Analog)">📹 DVR (Analog)</option>
-                  <option value="NVR (IP System)">🖥️ NVR (IP)</option>
-                  <option value="IP Camera">👁️ IP Camera</option>
-                  <option value="Biometric">☝️ Biometric</option>
-                </select>
-              </div>
+              <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black italic text-slate-800 text-[11px] outline-none appearance-none focus:border-blue-500 shadow-sm"
+                value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
+                <option value="DVR (Analog)">📹 DVR (Analog)</option>
+                <option value="NVR (IP System)">🖥️ NVR (IP)</option>
+                <option value="IP Camera">👁️ IP Camera</option>
+                <option value="Biometric">☝️ Biometric</option>
+              </select>
             </div>
             <InputField label="Safe Radius" icon="🎯" value={formData.radius} type="number" onChange={(v:any) => setFormData({...formData, radius: v})} />
           </div>
@@ -157,12 +160,11 @@ export default function AddDevicePage() {
 
           {isManual && (
             <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
-              <InputField label="📍 Latitude" placeholder="00.0000" value={formData.latitude} onChange={(v:any) => setFormData({...formData, latitude: v})} />
-              <InputField label="📍 Longitude" placeholder="00.0000" value={formData.longitude} onChange={(v:any) => setFormData({...formData, longitude: v})} />
+              <InputField label="📍 Latitude" placeholder="19.XXXXXX" value={formData.latitude} onChange={(v:any) => setFormData({...formData, latitude: v})} />
+              <InputField label="📍 Longitude" placeholder="72.XXXXXX" value={formData.longitude} onChange={(v:any) => setFormData({...formData, longitude: v})} />
             </div>
           )}
 
-          {/* HARDWARE & IP */}
           <div className="grid grid-cols-2 gap-4">
             <InputField label="Model No" icon="⚙️" placeholder="DS-XXXX" value={formData.model} onChange={(v:any) => setFormData({...formData, model: v})} />
             <InputField label="Static IP" icon="🌐" placeholder="192.168.1.XX" value={formData.ip_address} onChange={(v:any) => setFormData({...formData, ip_address: v})} />
@@ -189,7 +191,6 @@ export default function AddDevicePage() {
             </div>
           </div>
 
-          {/* REMARKS */}
           <div className="space-y-2 text-left">
             <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2"><Info size={14}/> Technical Remarks</label>
             <textarea className="w-full p-6 bg-white border border-slate-200 rounded-[30px] outline-none text-xs font-bold text-slate-700 min-h-[140px] focus:border-blue-500 transition-all resize-none shadow-inner"
@@ -217,7 +218,7 @@ export default function AddDevicePage() {
 function InputField({ label, placeholder, onChange, value, highlight, light, type = "text", icon }: any) {
   return (
     <div className="w-full text-left space-y-1.5">
-      <label className="text-[10px] font-black uppercase text-slate-400 ml-3 tracking-widest italic flex items-center gap-2 uppercase">
+      <label className="text-[10px] font-black uppercase text-slate-400 ml-3 tracking-widest italic flex items-center gap-2">
         <span className="text-base opacity-70">{icon}</span> {label}
       </label>
       <input type={type} className={`w-full p-4 border rounded-2xl font-black italic text-slate-800 text-[12px] outline-none transition-all shadow-sm active:scale-[0.99] ${light ? 'bg-slate-50 border-transparent focus:border-blue-100 shadow-inner' : highlight ? 'bg-white border-emerald-100 focus:border-emerald-500 shadow-emerald-50' : 'bg-white border-slate-200 focus:border-blue-500'}`} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
