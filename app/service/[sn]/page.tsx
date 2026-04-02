@@ -3,22 +3,28 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from "@/lib/components/AuthGuard"; 
+import MasterDialog from '@/lib/components/MasterDialog'; 
 import { 
   ClipboardCheck, User, Wrench, CheckCircle2, 
   Calendar, Save, Loader2, ArrowLeft,
-  MessageSquare, ShieldCheck, Tag, Edit3
+  MessageSquare, ShieldCheck, Tag, Edit3, X
 } from 'lucide-react';
 
 export default function ServiceReportPage() {
   const params = useParams();
   const router = useRouter();
-  const sn = params.sn as string; // URL params se SN le rahe hain
+  const sn = params.sn as string;
 
   const [loading, setLoading] = useState(false);
   const [device, setDevice] = useState<any>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [displayName, setDisplayName] = useState<string>(""); 
   
+  // 🛡️ MasterDialog State
+  const [dialog, setDialog] = useState({
+    isOpen: false, title: "", message: "", type: "info" as any,
+    onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+  });
+
   const [formData, setFormData] = useState({
     technician_name: '',
     work_done: '',
@@ -28,196 +34,228 @@ export default function ServiceReportPage() {
     next_service_date: ''
   });
 
+  // 🛡️ BLUEPRINT HMODAL: Browser Sync & Environment Setup
   useEffect(() => {
-    const initializePage = async () => {
+    document.body.style.overflow = 'hidden';
+    const setHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    window.addEventListener('resize', setHeight);
+    setHeight();
+
+    const fetchInitialData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const name = session.user.user_metadata?.full_name || session.user.email?.split('@')[0];
         setDisplayName(name);
         setFormData(prev => ({ ...prev, technician_name: name }));
       }
-
-      // ✅ FIX 1: Fetching device using 'device_sn'
-      const { data } = await supabase
-        .from('devices')
-        .select('site_name')
-        .eq('device_sn', sn) 
-        .single();
-        
+      // Fetching Site Name using device_sn
+      const { data } = await supabase.from('devices').select('site_name').eq('device_sn', sn).maybeSingle();
       if (data) setDevice(data);
     };
-    initializePage();
+
+    fetchInitialData();
+    return () => { 
+      document.body.style.overflow = 'unset'; 
+      window.removeEventListener('resize', setHeight);
+    };
   }, [sn]);
 
   const handleSaveReport = async () => {
-    if (!formData.technician_name) return alert("⚠️ Please enter Technician Name!");
-    if (!formData.work_done) return alert("⚠️ Please describe the Work Done!");
-    
+    // 🚩 Validation with MasterDialog (Professional English)
+    if (!formData.technician_name.trim()) {
+      setDialog({
+        isOpen: true, title: "Auth Required",
+        message: "Technician identity is required to authorize this maintenance log.",
+        type: "warning", onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
+      return;
+    }
+    if (!formData.work_done.trim()) {
+      setDialog({
+        isOpen: true, title: "Technical Details Missing",
+        message: "Please provide a brief description of the technical work completed.",
+        type: "warning", onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
+      return;
+    }
+
     setLoading(true);
 
-    // 🟢 Step 1: Insert into service_logs
-    // ✅ FIX 2: Check if your 'service_logs' table also uses 'device_sn'
+    // 🟢 Insert into service_logs (Matches your SQL Schema)
     const { error: logError } = await supabase.from('service_logs').insert([
       { 
-        device_sn: sn, // Link using device_sn
-        site_name: device?.site_name, // Site name bhi save karein for quick logs
-        ...formData, 
+        device_sn: sn, 
+        site_name: device?.site_name, 
+        technician_name: formData.technician_name,
+        work_done: formData.work_done,
+        service_type: formData.service_type,
+        status: formData.status,
+        remarks: formData.remarks,
+        next_service_date: formData.next_service_date || null,
         created_at: new Date() 
       }
     ]);
 
-    // 🟢 Step 2: Update devices table with next_service_date
+    // 🟢 Update devices table for next maintenance tracking
     if (!logError && formData.next_service_date) {
-      // ✅ FIX 3: Updating 'devices' table using 'device_sn'
-      await supabase.from('devices')
-        .update({ 
-            next_service_date: formData.next_service_date,
-            last_maintenance: new Date() // maintenance history sync
-        })
-        .eq('device_sn', sn); 
+      await supabase.from('devices').update({ 
+        next_service_date: formData.next_service_date,
+        last_maintenance: new Date() 
+      }).eq('device_sn', sn); 
     }
 
     if (!logError) {
-      setShowSuccess(true);
-      setTimeout(() => router.push('/admin'), 2000);
+      setDialog({
+        isOpen: true, title: "Report Synchronized",
+        message: "Technical service log has been successfully uploaded to the cloud.",
+        type: "success", onConfirm: () => router.push('/admin') 
+      });
     } else {
-      alert("❌ Error: " + logError.message);
+      setDialog({
+        isOpen: true, title: "Database Conflict",
+        message: logError.message,
+        type: "danger", onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
     }
     setLoading(false);
   };
 
   return (
     <AuthGuard allowedRoles={["super_admin", "engineer"]}>
-    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4 font-sans text-left text-slate-800">
-      <div className="w-full max-w-[480px] bg-white rounded-[55px] shadow-[0_30px_80px_rgba(0,0,0,0.1)] border border-white relative overflow-hidden">
+    <div className="fixed inset-0 bg-slate-900/10 flex items-stretch sm:items-center justify-center z-[100] backdrop-blur-sm">
+      
+      {/* ✨ HMODAL MAIN CONTAINER */}
+      <div 
+        style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+        className="w-full max-w-xl bg-white sm:h-auto sm:max-h-[95vh] sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-700"
+      >
         
-        {/* Accent Bar */}
-        <div className="absolute top-0 left-0 w-full h-2.5 bg-gradient-to-r from-blue-600 to-emerald-500"></div>
-
-        {/* Header */}
-        <div className="p-8 pb-4 relative">
-          <button onClick={() => router.back()} className="absolute left-6 top-8 p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600 border border-slate-100 active:scale-90 transition-all">
-            <ArrowLeft size={20} strokeWidth={3} />
-          </button>
-
-          <div className="flex flex-col items-center mt-6">
-             <div className="bg-blue-50/50 p-5 rounded-[30px] mb-4 border border-blue-100 shadow-inner">
-                <ClipboardCheck className="text-blue-600" size={32} strokeWidth={2.5} />
-             </div>
-             <h1 className="text-2xl font-[1000] text-slate-800 tracking-tighter uppercase italic leading-none text-center">Service Report</h1>
-             
-             {/* Identity & SN Badges */}
-             <div className="mt-6 flex flex-wrap justify-center gap-2">
-                <div className="px-4 py-1.5 bg-slate-900 text-white rounded-full flex items-center gap-2 border border-slate-700 shadow-lg">
-                   <ShieldCheck size={12} className="text-emerald-400" />
-                   <span className="text-[10px] font-black uppercase tracking-widest">{displayName}</span>
-                </div>
-                <div className="px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full flex items-center gap-2">
-                   <Tag size={12} className="text-blue-500" />
-                   <span className="text-[10px] font-mono font-black text-slate-500 tracking-wider uppercase">SN: {sn}</span>
-                </div>
-             </div>
-
-             <h2 className="text-slate-400 font-bold text-[10px] uppercase tracking-[5px] italic mt-5 text-center px-4">
-                {device?.site_name || 'LOADING SITE INFO...'}
-             </h2>
+        {/* 🏗️ HMODAL STICKY HEADER (No Line Look) */}
+        <div className="sticky top-0 z-[110] bg-white/95 backdrop-blur-xl p-4 flex justify-between items-center shrink-0 pt-[calc(env(safe-area-inset-top)+1rem)]">
+          <div className="flex items-center gap-3 italic text-left">
+            <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-100">
+              <ClipboardCheck size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none">Create Service Report</h3>
+              <p className="text-[9px] font-black text-blue-500 uppercase tracking-[3px] mt-1 leading-none italic">Modern Enterprises</p>
+            </div>
           </div>
+          <button onClick={() => router.back()} className="p-2.5 bg-slate-100 rounded-xl text-slate-400 active:scale-90 border border-slate-200/50">
+            <X size={20} strokeWidth={3} />
+          </button>
         </div>
 
-        {/* Form Body */}
-        <div className="px-10 space-y-6 max-h-[42vh] overflow-y-auto custom-scroll pb-6">
+        {/* 📝 HMODAL SCROLLABLE BODY */}
+        <div className="flex-1 overflow-y-auto px-5 sm:px-8 space-y-6 pt-5 pb-40 text-left overscroll-contain touch-pan-y custom-scroll bg-[#fcfdfe]">
           
-          <div className="space-y-2 group">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-4 tracking-widest flex items-center gap-2">
-               <User size={13} className="text-blue-500" /> Technician Name
-            </label>
-            <div className="relative">
-              <input 
-                type="text"
-                className="w-full p-5 bg-[#fcfdfe] border-2 border-slate-50 rounded-[25px] outline-none text-[15px] font-black text-slate-700 focus:border-blue-300 focus:bg-white transition-all shadow-inner pr-12"
-                value={formData.technician_name}
-                onChange={(e) => setFormData({...formData, technician_name: e.target.value})}
-                placeholder="Enter technician name"
-              />
-              <Edit3 size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+          {/* Status Badges */}
+          <div className="flex flex-wrap gap-2 animate-in fade-in duration-500">
+            <div className="px-3 py-1 bg-slate-900 text-white rounded-full flex items-center gap-2 border border-slate-700">
+              <ShieldCheck size={10} className="text-emerald-400" />
+              <span className="text-[9px] font-black uppercase tracking-widest">{displayName}</span>
+            </div>
+            <div className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-full flex items-center gap-2">
+              <Tag size={10} className="text-blue-500" />
+              <span className="text-[9px] font-mono font-black text-slate-500 tracking-wider">SN: {sn}</span>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-4 tracking-widest flex items-center gap-2">
-               <Wrench size={13} className="text-blue-500" /> Work Done / Issue
-            </label>
-            <textarea 
-              className="w-full p-6 bg-[#fcfdfe] border-2 border-slate-50 rounded-[35px] outline-none font-bold text-slate-700 focus:border-blue-300 transition-all min-h-[110px] shadow-inner text-sm"
-              placeholder="Explain fixed issues..."
-              onChange={(e) => setFormData({...formData, work_done: e.target.value})}
-            />
-          </div>
+          <h2 className="text-slate-400 font-black text-[10px] uppercase tracking-[4px] italic border-l-4 border-blue-500 pl-3">
+            {device?.site_name || 'Loading Site...'}
+          </h2>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-4 tracking-widest">Job Type</label>
-              <select className="w-full p-5 bg-slate-50 border-none rounded-[25px] font-black text-slate-600 appearance-none outline-none text-xs cursor-pointer shadow-sm" onChange={(e)=>setFormData({...formData, service_type: e.target.value})}>
-                <option value="Routine Service">Routine Service</option>
-                <option value="Breakdown">Breakdown</option>
-                <option value="Emergency">Emergency 🚨</option>
-                <option value="Installation">Installation</option>
-                <option value="Preventive Maintenance">Preventive</option>
-                <option value="Complaint">Complaint</option>
-              </select>
+          <div className="space-y-5">
+            {/* Technician Name */}
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-black text-slate-400 uppercase ml-3 tracking-widest italic flex items-center gap-2">
+                <User size={12} className="text-blue-500" /> Technician
+              </label>
+              <div className="relative">
+                <input type="text" className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl outline-none text-xs font-black text-slate-700 focus:border-blue-500 shadow-sm transition-all italic"
+                  value={formData.technician_name} onChange={(e) => setFormData({...formData, technician_name: e.target.value})} />
+                <Edit3 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" />
+              </div>
             </div>
-            <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-4 tracking-widest">Status</label>
-              <select className={`w-full p-5 rounded-[25px] font-black border-none outline-none appearance-none text-xs shadow-sm ${formData.status.includes('✅') ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`} onChange={(e)=>setFormData({...formData, status: e.target.value})}>
-                <option value="Completed ✅">Completed ✅</option>
-                <option value="Pending ⏳">Pending ⏳</option>
-              </select>
+
+            {/* Work Done */}
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-black text-slate-400 uppercase ml-3 tracking-widest italic flex items-center gap-2">
+                <Wrench size={12} className="text-blue-500" /> Work Description
+              </label>
+              <textarea className="w-full p-5 bg-white border border-slate-200 rounded-[25px] outline-none font-bold text-slate-700 focus:border-blue-500 transition-all min-h-[110px] shadow-inner text-xs resize-none"
+                placeholder="Brief technical details of fixed issues..." value={formData.work_done} onChange={(e) => setFormData({...formData, work_done: e.target.value})} />
+            </div>
+
+            {/* Grid Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-3 italic">Job Type</label>
+                <select className="w-full p-3.5 bg-slate-50 border-none rounded-2xl font-black text-slate-600 outline-none text-[10px] shadow-sm cursor-pointer appearance-none"
+                  value={formData.service_type} onChange={(e)=>setFormData({...formData, service_type: e.target.value})}>
+                  <option value="Routine Service">Routine Service</option>
+                  <option value="Breakdown">Breakdown</option>
+                  <option value="Emergency">Emergency 🚨</option>
+                  <option value="Installation">Installation</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-3 italic">Status</label>
+                <select className={`w-full p-3.5 rounded-2xl font-black outline-none text-[10px] shadow-sm appearance-none ${formData.status.includes('✅') ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}
+                  value={formData.status} onChange={(e)=>setFormData({...formData, status: e.target.value})}>
+                  <option value="Completed ✅">Completed ✅</option>
+                  <option value="Pending ⏳">Pending ⏳</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Remarks */}
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-black text-slate-400 uppercase ml-3 tracking-widest italic flex items-center gap-2">
+                <MessageSquare size={12} className="text-blue-500" /> Technical Remarks
+              </label>
+              <input className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm text-xs" 
+                placeholder="Additional engineer notes..." value={formData.remarks} onChange={(e)=>setFormData({...formData, remarks: e.target.value})} />
+            </div>
+
+            {/* Next Visit */}
+            <div className={`p-5 rounded-[30px] border-2 transition-all ${formData.next_service_date ? 'border-emerald-100 bg-emerald-50/30 shadow-inner' : 'border-slate-50 bg-slate-50'}`}>
+              <label className="text-[10px] font-black text-emerald-700 uppercase flex items-center gap-2 tracking-[2px] italic leading-none">
+                <Calendar size={12} /> Schedule Next Visit
+              </label>
+              <input type="date" className="w-full bg-transparent border-none outline-none font-black text-emerald-900 mt-2 cursor-pointer text-base" 
+                onChange={(e)=>setFormData({...formData, next_service_date: e.target.value})} />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-4 tracking-widest flex items-center gap-2">
-               <MessageSquare size={13} className="text-blue-500" /> Additional Remarks
-            </label>
-            <input className="w-full p-5 bg-slate-50 border-2 border-slate-50 rounded-[28px] font-bold text-slate-700 outline-none focus:border-blue-300 transition-all shadow-sm" placeholder="Extra notes..." onChange={(e)=>setFormData({...formData, remarks: e.target.value})} />
+          {/* 🚩 FOOTER ACTION */}
+          <div className="pt-4 pb-20 relative z-[50]">
+            <button 
+              onClick={handleSaveReport} disabled={loading}
+              className="w-full bg-slate-900 text-white font-black py-5 rounded-[25px] flex items-center justify-center gap-3 transition-all active:scale-95 text-sm uppercase tracking-[4px] italic shadow-xl border-b-[6px] border-black"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />} 
+              Submit Report
+            </button>
+            <p className="text-center mt-6 text-[8px] font-black text-slate-300 uppercase tracking-[6px] italic opacity-40">Modern Cloud Engine</p>
           </div>
 
-          <div className={`p-7 rounded-[40px] border-2 transition-all ${formData.next_service_date ? 'border-emerald-200 bg-emerald-50/50 shadow-emerald-50 shadow-inner' : 'border-slate-50 bg-slate-50'}`}>
-            <label className="text-[11px] font-[1000] text-emerald-700 uppercase flex items-center gap-2 tracking-[2px]">
-              <Calendar size={14} /> Schedule Next Visit
-            </label>
-            <input type="date" className="w-full bg-transparent border-none outline-none font-black text-emerald-900 mt-2 cursor-pointer text-xl" onChange={(e)=>setFormData({...formData, next_service_date: e.target.value})} />
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="p-10 bg-slate-50/50 pt-4">
-          <button 
-            onClick={handleSaveReport}
-            disabled={loading}
-            className="w-full bg-slate-900 hover:bg-black text-white font-[1000] py-7 rounded-[35px] flex items-center justify-center gap-4 transition-all active:scale-95 text-xl uppercase tracking-widest shadow-xl shadow-slate-200"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : <Save size={26} strokeWidth={2.5} />} 
-            SAVE SERVICE LOG
-          </button>
         </div>
       </div>
 
-      {/* Success Popup */}
-      {showSuccess && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
-          <div className="bg-white rounded-[50px] p-12 w-full max-w-sm text-center shadow-2xl animate-in zoom-in-95">
-             <CheckCircle2 size={60} className="text-emerald-500 mx-auto mb-6" />
-             <h3 className="text-3xl font-[1000] uppercase italic tracking-tighter text-slate-900">Synced!</h3>
-             <p className="text-slate-500 text-[10px] font-bold uppercase mt-2 tracking-widest">Report Filed Successfully.</p>
-          </div>
-        </div>
-      )}
+      {/* 🛡️ MasterDialog Replacement for alerts */}
+      <MasterDialog 
+        isOpen={dialog.isOpen} 
+        onClose={() => setDialog(prev => ({ ...prev, isOpen: false }))} 
+        onConfirm={dialog.onConfirm} 
+        title={dialog.title} 
+        message={dialog.message} 
+        type={dialog.type} 
+      />
 
-      <style jsx global>{`
-        .custom-scroll::-webkit-scrollbar { width: 5px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 20px; }
-      `}</style>
     </div>
     </AuthGuard>
   );
