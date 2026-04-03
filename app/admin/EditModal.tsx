@@ -63,7 +63,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-md flex items-stretch sm:items-center justify-center p-0 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[999] bg-slate-900/60 backdrop-blur-md flex items-stretch sm:items-center justify-center p-0 animate-in fade-in duration-300">
       
       <div 
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}

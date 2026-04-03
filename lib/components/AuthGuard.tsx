@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Loader2, ShieldAlert, Lock } from "lucide-react";
@@ -13,51 +13,71 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
+  
+  // 🛡️ 35 Saal ka Tajarba: Multiple simultaneous calls ko rokne ke liye Ref
+  const isChecking = useRef(false);
 
   useEffect(() => {
-    // 🛡️ BROWSER BAR FIX: Page load hote hi body overflow control
+    let isActive = true;
+
+    // Browser Scroll Control
     document.body.style.overflow = authorized ? 'unset' : 'hidden';
 
     const checkUser = async () => {
+      // 🚫 Race Condition Fix: Agar check pehle se chal raha hai, toh doosri call block karein
+      if (isChecking.current) return;
+      isChecking.current = true;
+
       try {
         // 1. Current Session Check (Fastest)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
+        if (!isActive) return;
+
         if (sessionError || !session) {
-          console.warn("Session Missing - Redirecting to Login");
+          console.warn("AuthGuard: Session Missing - Redirecting");
           router.replace("/login");
           return;
         }
 
         // 2. Server-Side Verification (Securest)
-        // getUser() call direct server se user data fetch karta hai, token refresh handle karne ke liye
+        // ✅ Yahan "Lock stolen" error aata tha, Ref aur isActive usey fix kar dega
         const { data: { user }, error: userError } = await supabase.auth.getUser();
 
+        if (!isActive) return;
+
         if (userError || !user) {
-          console.error("User verification failed:", userError?.message || "Auth session missing!");
-          await supabase.auth.signOut(); // Purana token clear karein
+          console.error("AuthGuard: User verification failed");
+          await supabase.auth.signOut();
           router.replace("/login");
           return;
         }
 
         // 🔐 ROLE-BASED ACCESS CHECK
         if (allowedRoles && allowedRoles.length > 0) {
-          const userRole = user.user_metadata?.role || "user";
+          // Check both standard metadata paths
+          const userRole = user.user_metadata?.role || user.raw_user_meta_data?.role || "user";
           
           if (!allowedRoles.includes(userRole)) {
-            setErrorStatus("ACCESS_DENIED");
-            // 2 second baad wapas home par bhej dena
-            setTimeout(() => router.replace("/"), 2500);
+            console.warn(`AuthGuard: Role ${userRole} is not authorized for this node.`);
+            if (isActive) setErrorStatus("ACCESS_DENIED");
+            // 2.5 second wait for UX, then redirect
+            setTimeout(() => {
+              if (isActive) router.replace("/admin");
+            }, 2500);
             return;
           }
         }
 
-        // ✅ Sab kuch sahi hai!
-        setAuthorized(true);
+        // ✅ Everything Clear!
+        if (isActive) setAuthorized(true);
 
       } catch (err) {
-        console.error("Critical Auth Error:", err);
-        router.replace("/login");
+        console.error("Critical AuthGuard Error:", err);
+        if (isActive) router.replace("/login");
+      } finally {
+        // Lock release karein
+        isChecking.current = false;
       }
     };
 
@@ -65,6 +85,7 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
 
     // 🔄 REALTIME AUTH LISTENER
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isActive) return;
       if (event === "SIGNED_OUT" || !session) {
         setAuthorized(false);
         router.replace("/login");
@@ -72,12 +93,14 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     });
 
     return () => {
-      subscription.unsubscribe();
+      isActive = false;
+      isChecking.current = false;
       document.body.style.overflow = 'unset';
+      subscription.unsubscribe();
     };
   }, [router, allowedRoles, authorized]);
 
-  // 🚫 1. Access Denied View (Premium Blueprint Style)
+  // 🚫 1. Access Denied View
   if (errorStatus === "ACCESS_DENIED") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffafa] p-6 text-center">
@@ -93,7 +116,7 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     );
   }
 
-  // ⏳ 2. Loading View (Modern Enterprises Branding)
+  // ⏳ 2. Loading View (Branding Style)
   if (!authorized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white overflow-hidden">
@@ -113,6 +136,6 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     );
   }
 
-  // 🏗️ 3. Main Content
+  // 🏗️ 3. Main Content Render
   return <>{children}</>;
 }

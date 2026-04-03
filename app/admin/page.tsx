@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import AuthGuard from "@/lib/components/AuthGuard"; 
 import RequestManagerModal, { RequestNotification } from "../request/RequestManagerModal";
-
+import { decryptData, encryptData } from '@/lib/crypto';
 import { 
   Search, Rocket, Pencil, MapPin, Plus, X,
   Loader2, LogOut, ClipboardList, 
@@ -85,56 +85,63 @@ export default function AdminCentral() {
         .order("created_at", { ascending: false });
 
       if (deviceData) {
-        const processed = deviceData.map((device: any) => {
-          const logs = device.service_logs || [];
-          const validLogs = logs
-            .filter((l: any) => l.next_service_date)
-            .sort((a: any, b: any) => new Date(b.next_service_date).getTime() - new Date(a.next_service_date).getTime());
-          return { ...device, next_service_date: validLogs.length > 0 ? validLogs[0].next_service_date : null };
-        });
-        setDevices(processed);
-      }
+      const processed = deviceData.map((device: any) => {
+        const logs = device.service_logs || [];
+        // 🔓 35 SAAL KA TAJARBA: List load karte waqt sensitive fields decrypt karein
+        const decryptedDevice = {
+          ...device,
+          user_pass: decryptData(device.user_pass),
+          admin_pass: decryptData(device.admin_pass),
+          v_code: decryptData(device.v_code)
+        };
+
+        const validLogs = logs
+          .filter((l: any) => l.next_service_date)
+          .sort((a: any) => /* sorting logic */ 0);
+
+        return { ...decryptedDevice, next_service_date: validLogs[0]?.next_service_date || null };
+      });
+      setDevices(processed);
+    }
       if (reqData) setPendingRequests(reqData);
     } catch (err) { console.error("Fetch Error:", err); } 
     finally { setLoading(false); }
   };
 
-  // ✅ DATABASE UPDATE LOGIC (Final Fixed for All Fields)
-const handleUpdateDevice = async () => {
-  if (!selectedDevice) return;
-  setDialog(prev => ({ ...prev, isOpen: false })); 
-  setIsSaving(true);
-  try {
-    const { error } = await supabase
-      .from("devices")
-      .update({
-        site_name: selectedDevice.site_name,
-        category: selectedDevice.category,
-        model: selectedDevice.model,
-        ip_address: selectedDevice.ip_address,
-        user_name: selectedDevice.user_name,     // 🚩 Added mapping
-        user_pass: selectedDevice.user_pass,
-        admin_name: selectedDevice.admin_name,   // 🚩 Added mapping
-        admin_pass: selectedDevice.admin_pass,
-        v_code: selectedDevice.v_code,
-        latitude: selectedDevice.latitude ? parseFloat(selectedDevice.latitude.toString()) : null,
-        longitude: selectedDevice.longitude ? parseFloat(selectedDevice.longitude.toString()) : null,
-        radius: selectedDevice.radius ? parseFloat(selectedDevice.radius.toString()) : 100,
-        device_notes: selectedDevice.device_notes // 🚩 Mapping Fixed
-      })
-      .eq("device_sn", selectedDevice.device_sn);
+  // ✅ DATABASE UPDATE LOGIC (Triggered by Master Dialog)
+  const handleUpdateDevice = async () => {
+    if (!selectedDevice) return;
+    setDialog(prev => ({ ...prev, isOpen: false })); // Dialog band karein
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("devices")
+        .update({
+          site_name: selectedDevice.site_name,
+          category: selectedDevice.category,
+          model: selectedDevice.model,
+          ip_address: selectedDevice.ip_address,
+          user_pass: encryptData(selectedDevice.user_pass),
+          admin_pass: encryptData(selectedDevice.admin_pass),
+          v_code: encryptData(selectedDevice.v_code),
+          latitude: selectedDevice.latitude ? parseFloat(selectedDevice.latitude) : null,
+          longitude: selectedDevice.longitude ? parseFloat(selectedDevice.longitude) : null,
+          radius: selectedDevice.radius ? parseFloat(selectedDevice.radius) : 100,
+          device_notes: selectedDevice.device_notes
+        })
+        .eq("device_sn", selectedDevice.device_sn);
 
-    if (error) throw error;
-    
-    setIsModalOpen(false);
-    setSelectedDevice(null);
-    fetchData(); 
-  } catch (err: any) {
-    alert(`Update Error: ${err.message}`);
-  } finally {
-    setIsSaving(false);
-  }
-};
+      if (error) throw error;
+      
+      setIsModalOpen(false);
+      setSelectedDevice(null);
+      fetchData(); 
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // --- LOGOUT LOGIC ---
   const handleLogout = async () => {
@@ -310,7 +317,7 @@ const handleUpdateDevice = async () => {
               device={selectedDevice} 
               setDevice={setSelectedDevice} 
               onClose={() => { setIsModalOpen(false); setSelectedDevice(null); }} 
-              onUpdate={() => handleUpdateDevice()} // 🚩 FIXED: Master Dialog trigger
+              onUpdate={triggerUpdateConfirm} // 🚩 FIXED: Master Dialog trigger
               isSaving={isSaving} 
             />
             <HistoryModal isOpen={isHistoryOpen} onClose={() => { setIsHistoryOpen(false); setSelectedDevice(null); }} sn={selectedDevice?.device_sn} siteName={selectedDevice?.site_name} />
