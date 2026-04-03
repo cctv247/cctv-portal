@@ -208,27 +208,13 @@ interface FormData {
   );
 }
 
-function InputField({ label, placeholder, onChange, value, highlight = false, icon }: {
-  label: string;
-  placeholder: string;
-  onChange: (v: string) => void; // 👈 Ye 'v' ko string define kar raha hai
-  value: string;
-  highlight?: boolean;
-  icon?: React.ReactNode;
-}) {
+function InputField({ label, placeholder, onChange, value, highlight = false, icon }: any) {
   return (
     <div className="w-full text-left font-bold space-y-2">
-      <label className="text-[9px] font-black text-slate-400 uppercase ml-4 tracking-widest leading-none flex items-center gap-1">
-        {icon}{label}
-      </label>
-      <input 
-        className={`w-full p-5 bg-slate-50 border-2 rounded-[25px] outline-none text-sm font-bold text-slate-700 transition-all ${
-          highlight ? 'border-emerald-100 focus:border-emerald-400' : 'border-slate-50 focus:border-blue-400'
-        }`}
-        placeholder={placeholder} 
-        value={value} 
-        onChange={(e) => onChange(e.target.value)} // 👈 Browser event se string nikaal kar bhej raha hai
-      />
+      <label className="text-[9px] font-black text-slate-400 uppercase ml-4 tracking-widest leading-none flex items-center gap-1">{icon}{label}</label>
+      <input className={`w-full p-5 bg-slate-50 border-2 rounded-[25px] outline-none text-sm font-bold text-slate-700 transition-all ${highlight ? 'border-emerald-100 focus:border-emerald-400' : 'border-slate-50 focus:border-blue-400'}`}
+        placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
+    
   );
 }
