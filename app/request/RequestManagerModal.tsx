@@ -140,7 +140,7 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
                   <div className="flex flex-wrap items-center justify-between gap-6 pt-6 border-t border-slate-100">
                     <div className="flex items-center gap-6">
                       {/* Portal ID (Right Border Divider) */}
-                      <div className="flex flex-col pr-8 border-r-2 border-slate-100">
+                      <div className="flex flex-col pr-8 border-r-2 border-slate-80">
                         <span className="text-[9px] font-black text-blue-500 uppercase tracking-[2px] leading-none">Portal ID</span>
                         <span className="text-sm font-[1000] text-slate-800 mt-2.5 uppercase italic tracking-tighter">{generatePortalId(req.device_sn)}</span>
                       </div>
