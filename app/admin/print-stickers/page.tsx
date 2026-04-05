@@ -39,7 +39,7 @@ export default function PrintStickersPage() {
               <div className="p-5 flex flex-col items-center">
                 <div className="relative p-2 bg-white border border-blue-100 rounded-2xl mb-3">
                   <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(company.baseUrl + '/' + device?.device_sn)}`} 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(company.portalUrl + '/' + device?.device_sn)}`} 
                     className="w-[100pt] h-[100pt] block" 
                     alt="QR"
                     loading="eager"
