@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { COMPANY } from "@/lib/config";
+
 export default function PrintStickersPage() {
   const [items, setItems] = useState<any[]>([]);
 
@@ -11,7 +11,11 @@ export default function PrintStickersPage() {
     }
   }, []);
 
-  const company = COMPANY;
+  const company = {
+    name: "MODERN ENTERPRISES",
+    contact: "+91 7021330886",
+    baseUrl: "https://cctv-portal.vercel.app/request"
+  };
 
   return (
     <div className="bg-white min-h-screen font-sans">

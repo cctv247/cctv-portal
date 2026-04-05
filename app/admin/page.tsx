@@ -236,9 +236,9 @@ export default function AdminCentral() {
                 <BellRing size={16} />
                 {stats.pending > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white font-black px-1 shadow-sm">{stats.pending}</span>}
               </button>
-              <button onClick={triggerLogoutConfirm} className="p-2.5 bg-white border border-red-50 text-red-500 rounded-2xl shadow-lg active:scale-90"><LogOut size={16} /></button>
               <button onClick={() => setIsStickerOpen(true)} className="p-2.5 bg-white border border-slate-200 text-blue-600 rounded-2xl shadow-lg active:scale-90 transition-all">
                  <QrCode size={16} /> </button>
+              <button onClick={triggerLogoutConfirm} className="p-2.5 bg-white border border-red-50 text-red-500 rounded-2xl shadow-lg active:scale-90"><LogOut size={16} /></button>
             </div>
           </div>
 
