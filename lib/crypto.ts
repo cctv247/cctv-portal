@@ -1,62 +1,50 @@
 import CryptoJS from 'crypto-js';
 
-// 🔑 SECRET KEY: .env.local se uthayega, fallback sirf safety ke liye hai
+// 🚩 Hardcoded Key: Isse mismatch ka khatra khatam
 const SECRET_KEY = process.env.NEXT_PUBLIC_CRYPTO_KEY || 'MODERN_ENT_2026_SECURE';
 
 /**
- * 🔒 ENCRYPT DATA
- * Plain text ko AES-256 encrypted string mein badalta hai
- */
-export const encryptData = (text: string): string => {
-  if (!text) return '';
-  
-  // 🛡️ Tajarba Check: Agar data pehle se encrypted hai (U2Fsd se shuru hota hai), 
-  // toh dobara mat karo warna data kharab ho jayega.
-  if (typeof text === 'string' && text.startsWith('U2Fsd')) {
-    return text;
-  }
-  
-  try {
-    return CryptoJS.AES.encrypt(text, SECRET_KEY).toString();
-  } catch (err) {
-    console.error("Encryption Error:", err);
-    return text;
-  }
-};
-
-/**
  * 🔓 DECRYPT DATA
- * Encrypted "Kachre" ko wapas asli text banata hai.
- * Malformed UTF-8 error se bachne ke liye checks lagaye gaye hain.
  */
 export const decryptData = (ciphertext: string): string => {
-  // 1. Khali data check
-  if (!ciphertext) return '';
+  // 1. Agar data khali hai ya string nahi hai
+  if (!ciphertext || typeof ciphertext !== 'string') return "";
 
-  // 2. 🛡️ Sabse Zaroori Check: 
-  // Agar string 'U2Fsd' se shuru nahi hoti, iska matlab ye encrypted nahi hai.
-  // Ise bina touch kiye wapas bhej do (Malformed UTF-8 error yahi se bachta hai).
-  if (typeof ciphertext !== 'string' || !ciphertext.startsWith('U2Fsd')) {
-    return ciphertext;
+  // 2. 🛡️ CHOR PAKADNE WALI LINE:
+  // Agar password 'U2Fsd' se shuru NAHI hota, toh wo pehle se hi PLAIN TEXT hai.
+  // Ise decrypt karne ki koshish karna hi "Malformed UTF-8" error deta hai.
+  if (!ciphertext.startsWith('U2Fsd')) {
+    console.log("🟢 Skipping Decryption: Data is already Plain Text.");
+    return ciphertext; // Seedha wahi password wapas kar do (e.g. admin123)
   }
 
   try {
-    // 3. Decrypt karne ki koshish karein
+    // 3. Decrypt the ciphertext
     const bytes = CryptoJS.AES.decrypt(ciphertext, SECRET_KEY);
     
-    // 4. Bytes ko UTF-8 string mein badlein
+    // 4. Convert to UTF-8
     const originalText = bytes.toString(CryptoJS.enc.Utf8);
 
-    // 5. Agar decryption fail hui (Galat key ya corrupt data)
+    // 5. Check if result is empty (Wrong Key)
     if (!originalText || originalText.length === 0) {
-      console.warn("Decryption failed: Possibly wrong key or corrupted data.");
-      return ciphertext; // Original encrypted string dikha do bajaye crash hone ke
+      console.warn("⚠️ Decryption result empty. Key mismatch?");
+      return ciphertext; 
     }
 
     return originalText;
   } catch (err) {
-    // 6. Kisi bhi wajah se crash ho toh 'Protected' dikhayein ya original data
-    console.error("Malformed or Invalid Data during decryption:", err);
+    // 6. Final safety for Malformed Data
+    console.error("❌ Crypto Crash Prevented: Invalid Data Format.");
     return ciphertext; 
   }
+};
+
+/**
+ * 🔒 ENCRYPT DATA
+ */
+export const encryptData = (text: string): string => {
+  if (!text || (typeof text === 'string' && text.startsWith('U2Fsd'))) return text;
+  try {
+    return CryptoJS.AES.encrypt(text, SECRET_KEY).toString();
+  } catch (err) { return text; }
 };

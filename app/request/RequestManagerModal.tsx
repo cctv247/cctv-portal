@@ -2,19 +2,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { 
-  X, MessageCircle, ShieldCheck, Loader2, BellRing, Hash, MessageSquare 
+  X, MessageCircle, ShieldCheck, Loader2, BellRing, MessageSquare 
 } from "lucide-react";
 import MasterDialog from "@/lib/components/MasterDialog";
+import { decryptData } from "@/lib/crypto"; 
 
-// --- 🔔 COMPONENT 1: Notification Icon for Device Cards (Fixed) ---
-export function RequestNotification({ deviceSn, pendingRequests, onClick }: { deviceSn: string, pendingRequests: any[], onClick: () => void }) {
-  // ✅ 35 Saal ka Tajurba Tip: Data comparison hamesha trim aur lowercase mein karein
-  const hasRequest = pendingRequests.some(r => 
+// --- 🔔 COMPONENT 1: Notification Icon ---
+export function RequestNotification({ deviceSn, pendingRequests, onClick }: any) {
+  const hasRequest = pendingRequests?.some((r: any) =>
     String(r.device_sn).trim().toLowerCase() === String(deviceSn).trim().toLowerCase()
   );
-
   if (!hasRequest) return null;
-
   return (
     <button 
       onClick={(e) => { e.stopPropagation(); onClick(); }} 
@@ -22,7 +20,6 @@ export function RequestNotification({ deviceSn, pendingRequests, onClick }: { de
     >
       <div className="relative">
         <BellRing size={24} className="animate-pulse" />
-        {/* pulsing red dot */}
         <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600 border-2 border-white shadow-sm"></span>
@@ -33,48 +30,39 @@ export function RequestNotification({ deviceSn, pendingRequests, onClick }: { de
 }
 
 // --- 🛡️ COMPONENT 2: Main Tasks Manager Modal ---
-export default function RequestManagerModal({ isOpen, onClose, onRefresh, filterSn }: { isOpen: boolean, onClose: () => void, onRefresh: () => void, filterSn?: string | null }) {
+export default function RequestManagerModal({ isOpen, onClose, onRefresh, filterSn }: any) {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState({ isOpen: false, title: "", message: "", type: "info" as any });
 
-  useEffect(() => { 
-    if (isOpen) fetchRequests(); 
+  // 🔒 LOCK BODY SCROLL & FETCH
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      fetchRequests();
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen, filterSn]);
 
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      // ✅ Fetch only 'pending' status
       let query = supabase.from("requests").select("*").eq("status", "pending");
-      
-      // ✅ If filtered by a specific device SN
-      if (filterSn) {
-        query = query.eq("device_sn", filterSn.trim());
-      }
-      
+      if (filterSn) query = query.eq("device_sn", filterSn.trim());
       const { data: reqData, error: reqError } = await query.order("created_at", { ascending: false });
-      if (reqError) throw reqError;
-
-      if (reqData && reqData.length > 0) {
-        // Fetch device details for passwords
-        const { data: devData } = await supabase
-          .from("devices")
-          .select("device_sn, user_pass, user_name")
-          .in("device_sn", reqData.map(r => r.device_sn));
-
+      
+      if (reqData?.length) {
+        const snList = reqData.map(r => r.device_sn);
+        const { data: devData } = await supabase.from("devices").select("device_sn, user_pass, user_name").in("device_sn", snList);
         setRequests(reqData.map(req => ({ 
           ...req, 
           deviceDetails: devData?.find(d => String(d.device_sn).trim().toLowerCase() === String(req.device_sn).trim().toLowerCase()) 
         })));
-      } else {
-        setRequests([]);
-      }
-    } catch (err: any) { 
-      console.error("Fetch Error:", err.message);
-    } finally { 
-      setLoading(false); 
-    }
+      } else { setRequests([]); }
+    } catch (err: any) { console.error(err.message); } 
+    finally { setLoading(false); }
   };
 
   const generatePortalId = (sn: string) => {
@@ -84,111 +72,90 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
 
   const handleAction = async (req: any) => {
     try {
-      // 1. Mark as 'done' in Database
-      const { error } = await supabase.from("requests").update({ status: 'done' }).eq("id", req.id);
-      if (error) throw error;
-
-      // 2. Data Formatting
+      const finalPass = decryptData(req.deviceDetails?.user_pass || '');
+      await supabase.from("requests").update({ status: 'done' }).eq("id", req.id);
       const portalId = generatePortalId(req.device_sn);
-      
-      // 🚩 WhatsApp Message Content
-      const rawMsg = 
-        `*🔐 CCTV ACCESS DETAILS*\n\n` +
-        `📍 *Site:* ${req.site_name}\n` +
-        `🆔 *Portal ID:* ${portalId}\n` +
-        `👤 *User Name:* user\n` +
-        `🛡️ *User Pass:* ${req.deviceDetails?.user_pass || 'N/A'}\n\n` +
-        (req.message ? `*Note:* ${req.message}\n\n` : "") +
-        `_Generated by MODERN ENTERPRISES_`;
-
-      const encodedMsg = encodeURIComponent(rawMsg);
-      const cleanMobile = req.mobile.replace(/\D/g, "");
-      const finalMobile = cleanMobile.startsWith("91") ? cleanMobile : `91${cleanMobile}`;
-
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${finalMobile}&text=${encodedMsg}`;
-
-      // 3. Open WhatsApp
-      window.open(whatsappUrl, '_blank');
-      
-      // 4. Update UI
-      fetchRequests(); 
-      onRefresh();
-      if (filterSn) onClose();
-
-    } catch (err: any) { 
-      setDialog({ 
-        isOpen: true, 
-        title: "Action Failed", 
-        message: "WhatsApp dispatch failed. Check database connection.", 
-        type: "danger" 
-      });
-    }
+      const rawMsg = `*🔐 CCTV ACCESS DETAILS*\n\n📍 *Site:* ${req.site_name}\n🆔 *Portal ID:* ${portalId}\n👤 *User Name:* user\n🛡️ *User Pass:* ${finalPass}\n\n${req.message ? `*Note:* ${req.message}\n\n` : ""}_Generated by MODERN ENTERPRISES_`;
+      window.open(`https://api.whatsapp.com/send?phone=${req.mobile.replace(/\D/g, "").replace(/^91|/, "91")}&text=${encodeURIComponent(rawMsg)}`, '_blank');
+      fetchRequests(); onRefresh(); if (filterSn) onClose();
+    } catch (err: any) { setDialog({ isOpen: true, title: "Error", message: "Dispatch Error", type: "danger" }); }
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-slate-900/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in">
-        <div className="w-full max-w-2xl bg-[#fcfdfe] rounded-t-[40px] sm:rounded-[40px] shadow-2xl overflow-hidden border-t sm:border border-white animate-in slide-in-from-bottom duration-300 max-h-[92vh] flex flex-col">
+      {/* 🚩 FULL DISPLAY FIX: 100dvh used for browser bar stability */}
+      <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-slate-900/95 backdrop-blur-md animate-in fade-in duration-300 touch-none">
+        
+        <div className="w-full max-w-2xl bg-white h-full sm:h-auto sm:max-h-[85vh] rounded-t-[45px] sm:rounded-[50px] shadow-2xl overflow-hidden flex flex-col border-t sm:border border-white/20 relative">
           
-          <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-emerald-500 shrink-0"></div>
+          <div className="h-2.5 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-400 shrink-0"></div>
 
-          <div className="p-6 border-b flex justify-between items-center bg-white sticky top-0 z-10 shrink-0 text-left">
+          {/* Header */}
+          <div className="p-7 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-[100] shrink-0 text-left">
             <div>
-              <h2 className="text-lg font-[1000] text-slate-900 uppercase italic flex items-center gap-2 tracking-tighter leading-none">
-                <ShieldCheck className="text-blue-600" size={22} /> Tasks Manager
+              <h2 className="text-xl font-[1000] text-slate-900 uppercase italic flex items-center gap-2.5 tracking-tighter leading-none">
+                <ShieldCheck className="text-blue-600" size={24} /> Requests Manager
               </h2>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[2px] mt-1.5">Manage Access Requests</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[3px] mt-2">Managing Pending Access</p>
             </div>
-            <button onClick={onClose} className="p-2.5 bg-slate-50 rounded-2xl text-slate-400 active:scale-90 border transition-all">
-              <X size={20} strokeWidth={3} />
+            <button onClick={onClose} className="p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl active:scale-90 border transition-all text-slate-400">
+              <X size={22} strokeWidth={3} />
             </button>
           </div>
 
-          <div className="p-4 overflow-y-auto space-y-4 bg-[#fcfdfe] flex-1 pb-16 custom-scroll">
+          {/* Body */}
+          <div className="p-5 overflow-y-auto space-y-5 bg-slate-50/50 flex-1 pb-32 overscroll-contain">
             {loading ? (
-              <div className="flex flex-col items-center py-20 gap-3">
-                <Loader2 className="animate-spin text-blue-600" size={32}/>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Syncing Cloud...</p>
+              <div className="py-24 flex flex-col items-center gap-4">
+                <Loader2 className="animate-spin text-blue-600" size={36}/>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[5px] italic">Syncing Live Node...</p>
               </div>
             ) : requests.length === 0 ? (
-              <div className="text-center py-24 opacity-20 flex flex-col items-center gap-4">
-                <BellRing size={48} />
-                <p className="font-black text-[10px] uppercase tracking-[5px]">No Pending Requests</p>
+              <div className="py-32 text-center opacity-20 flex flex-col items-center gap-5 italic font-black">
+                <BellRing size={50} />
+                <p className="text-xs uppercase tracking-[6px]">All Clear - No Tasks</p>
               </div>
             ) : (
               requests.map(req => (
-                <div key={req.id} className="p-5 rounded-[35px] border border-slate-200 bg-white shadow-sm hover:border-blue-200 transition-all text-left group">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <h3 className="text-base font-[1000] text-slate-900 uppercase italic leading-tight">{req.site_name}</h3>
-                    <span className="text-[9px] font-black text-slate-500 bg-slate-50 px-3 py-1 rounded-xl border border-slate-100 uppercase italic">SN: {req.device_sn}</span>
+                /* 🚩 BORDER FIX: Changed from [8px] to [3px] for elegant look */
+                <div key={req.id} className="group relative p-6 rounded-[40px] border border-slate-200 bg-white shadow-sm hover:border-blue-200 transition-all text-left overflow-hidden border-l-[3px] border-l-blue-600">
+                  
+                  <div className="flex items-start justify-between gap-4 mb-5">
+                    <h3 className="text-lg font-[1000] text-slate-900 uppercase italic leading-tight tracking-tight">{req.site_name}</h3>
+                    <span className="text-[10px] font-black text-slate-500 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100 uppercase italic">
+                      ID: {req.device_sn.slice(-8).toUpperCase()}
+                    </span>
                   </div>
 
                   {req.message && (
-                    <div className="flex items-start gap-3 bg-blue-50/50 p-4 rounded-2xl border border-blue-100 mb-4">
-                      <MessageSquare size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                      <p className="text-xs font-bold text-blue-900 leading-snug italic">"{req.message}"</p>
+                    <div className="flex items-start gap-4 bg-blue-50/50 p-5 rounded-[25px] border border-blue-100 mb-5 animate-in slide-in-from-left duration-500">
+                      <MessageSquare size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                      <p className="text-[13px] font-bold text-blue-900 leading-snug italic">"{req.message}"</p>
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center justify-between gap-4 pt-5 border-t border-slate-50">
-                    <div className="flex items-center gap-4">
-                      <div className="flex flex-col">
-                        <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest leading-none">Portal ID</span>
-                        <span className="text-xs font-black text-slate-800 mt-2 uppercase italic tracking-tighter">{generatePortalId(req.device_sn)}</span>
+                  {/* Info Row */}
+                  <div className="flex flex-wrap items-center justify-between gap-6 pt-6 border-t border-slate-100">
+                    <div className="flex items-center gap-6">
+                      {/* Portal ID (Right Border Divider) */}
+                      <div className="flex flex-col pr-8 border-r-2 border-slate-100">
+                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-[2px] leading-none">Portal ID</span>
+                        <span className="text-sm font-[1000] text-slate-800 mt-2.5 uppercase italic tracking-tighter">{generatePortalId(req.device_sn)}</span>
                       </div>
-                      <div className="flex flex-col border-l border-slate-100 pl-4">
-                        <span className="text-[8px] font-black text-slate-400 uppercase">WhatsApp</span>
-                        <span className="text-xs font-bold text-slate-800">{req.mobile}</span>
+                      {/* WhatsApp */}
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[2px] leading-none">User Mobile</span>
+                        <span className="text-sm font-black text-slate-800 mt-2.5 italic tracking-tighter leading-none">{req.mobile}</span>
                       </div>
                     </div>
                     
                     <button 
                       onClick={() => handleAction(req)} 
-                      className="w-full sm:w-auto bg-blue-600 text-white px-8 py-4 rounded-[25px] flex items-center justify-center gap-3 text-[11px] font-[1000] uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-all border-b-4 border-blue-900 italic"
+                      className="w-full sm:w-auto bg-blue-600 text-white px-10 py-4.5 rounded-[30px] flex items-center justify-center gap-3 text-[12px] font-[1000] uppercase tracking-widest shadow-2xl active:scale-95 transition-all border-b-[5px] border-blue-900 italic"
                     >
-                      <MessageCircle size={18}/> Send & Complete
+                      <MessageCircle size={20}/> Dispatch Access
                     </button>
                   </div>
                 </div>
@@ -201,11 +168,9 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
       <MasterDialog 
         isOpen={dialog.isOpen} 
         onClose={() => setDialog(prev => ({ ...prev, isOpen: false }))} 
-        onConfirm={() => setDialog(prev => ({ ...prev, isOpen: false }))} 
         title={dialog.title} 
         message={dialog.message} 
         type={dialog.type} 
-        confirmText="Understood" 
       />
     </>
   );

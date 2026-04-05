@@ -5,10 +5,11 @@ import { supabase } from "@/lib/supabaseClient";
 import AuthGuard from "@/lib/components/AuthGuard"; 
 import RequestManagerModal, { RequestNotification } from "../request/RequestManagerModal";
 import { decryptData, encryptData } from '@/lib/crypto';
+import StickerModal from "@/lib/components/StickerModal";
 import { 
   Search, Rocket, Pencil, MapPin, Plus, X,
   Loader2, LogOut, ClipboardList, 
-  History as HistoryIcon, ShieldCheck, User as UserIcon, ExternalLink, CalendarClock, BellRing
+  History as HistoryIcon, ShieldCheck, User as UserIcon, ExternalLink, CalendarClock, BellRing, QrCode
 } from "lucide-react";
 import EditModal from "./EditModal";
 import HistoryModal from "./HistoryModal";
@@ -28,6 +29,7 @@ export default function AdminCentral() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [isStickerOpen, setIsStickerOpen] = useState(false);
 
   // --- MASTER DIALOG STATE ---
   const [dialog, setDialog] = useState<{
@@ -229,12 +231,14 @@ export default function AdminCentral() {
             </div>
 
             <div className="flex gap-2">
-              <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-4 rounded-2xl shadow-lg transition-all active:scale-90 ${isSearchOpen ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-blue-600'}`}><Search size={20} /></button>
-              <button onClick={() => { setFilterSn(null); setIsReqManagerOpen(true); }} className="relative p-4 bg-white border border-slate-200 text-red-500 rounded-2xl shadow-lg active:scale-95 transition-all">
-                <BellRing size={22} />
+              <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2.5 rounded-2xl shadow-lg transition-all active:scale-90 ${isSearchOpen ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-blue-600'}`}><Search size={16} /></button>
+              <button onClick={() => { setFilterSn(null); setIsReqManagerOpen(true); }} className="relative p-2.5 bg-white border border-slate-200 text-red-500 rounded-2xl shadow-lg active:scale-95 transition-all">
+                <BellRing size={16} />
                 {stats.pending > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white font-black px-1 shadow-sm">{stats.pending}</span>}
               </button>
-              <button onClick={triggerLogoutConfirm} className="p-4 bg-white border border-red-50 text-red-500 rounded-2xl shadow-lg active:scale-90"><LogOut size={20} /></button>
+              <button onClick={triggerLogoutConfirm} className="p-2.5 bg-white border border-red-50 text-red-500 rounded-2xl shadow-lg active:scale-90"><LogOut size={16} /></button>
+              <button onClick={() => setIsStickerOpen(true)} className="p-2.5 bg-white border border-slate-200 text-blue-600 rounded-2xl shadow-lg active:scale-90 transition-all">
+                 <QrCode size={16} /> </button>
             </div>
           </div>
 
@@ -335,6 +339,7 @@ export default function AdminCentral() {
           </>
         )}
         <RequestManagerModal isOpen={isReqManagerOpen} onClose={() => { setIsReqManagerOpen(false); setFilterSn(null); }} onRefresh={fetchData} filterSn={filterSn} />
+        <StickerModal isOpen={isStickerOpen} onClose={() => setIsStickerOpen(false)} devices={devices} />
       </div>
     </AuthGuard>
   );
