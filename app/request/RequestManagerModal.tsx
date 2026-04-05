@@ -1,51 +1,53 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { 
-  X, MessageCircle, ShieldCheck, Loader2, BellRing, MessageSquare 
+import {
+  X,
+  MessageCircle,
+  ShieldCheck,
+  Loader2,
+  BellRing,
+  MessageSquare,
 } from "lucide-react";
 import MasterDialog from "@/lib/components/MasterDialog";
-import { decryptData } from "@/lib/crypto"; 
+import { decryptData } from "@/lib/crypto";
 
-// --- 🔔 COMPONENT 1: Notification Icon (Card Level) ---
+// 🔔 Notification Icon Component
 export function RequestNotification({ deviceSn, pendingRequests, onClick }: any) {
   const hasRequest = pendingRequests?.some((r: any) =>
     String(r.device_sn).trim().toLowerCase() === String(deviceSn).trim().toLowerCase()
   );
   if (!hasRequest) return null;
   return (
-    <button 
-      onClick={(e) => { e.stopPropagation(); onClick(); }} 
-      className="absolute left-6 top-6 text-red-600 hover:scale-125 active:scale-90 transition-all z-[110] p-1.5 bg-white/80 backdrop-blur-md rounded-full shadow-lg border border-red-100"
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="absolute left-6 top-6 text-red-600 hover:scale-110 active:scale-90 transition-all z-[110] p-1 bg-white/80 backdrop-blur-md rounded-full shadow-lg border border-red-100"
     >
       <div className="relative">
-        <BellRing size={24} className="animate-pulse" />
-        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+        <BellRing size={22} className="animate-pulse" />
+        <span className="absolute -top-1 -right-1 flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600 border-2 border-white shadow-sm"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 border border-white"></span>
         </span>
       </div>
     </button>
   );
 }
 
-// --- 🛡️ COMPONENT 2: Main Tasks Manager Modal ---
 export default function RequestManagerModal({ isOpen, onClose, onRefresh, filterSn }: any) {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialog, setDialog] = useState({ 
-    isOpen: false, title: "", message: "", type: "info" as any 
-  });
+  const [dialog, setDialog] = useState({ isOpen: false, title: "", message: "", type: "info" as any });
 
   // 🔒 LOCK BODY SCROLL & FETCH DATA
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
       fetchRequests();
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
-    return () => { document.body.style.overflow = 'unset'; };
+    return () => { document.body.style.overflow = "unset"; };
   }, [isOpen, filterSn]);
 
   const fetchRequests = async () => {
@@ -53,29 +55,16 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
     try {
       let query = supabase.from("requests").select("*").eq("status", "pending");
       if (filterSn) query = query.eq("device_sn", filterSn.trim());
-      const { data: reqData, error: reqError } = await query.order("created_at", { ascending: false });
-      
-      if (reqError) throw reqError;
+      const { data } = await query.order("created_at", { ascending: false });
 
-      if (reqData?.length) {
-        const snList = reqData.map(r => r.device_sn);
-        const { data: devData } = await supabase
-          .from("devices")
-          .select("device_sn, user_pass, user_name")
-          .in("device_sn", snList);
-        
-        setRequests(reqData.map(req => ({ 
-          ...req, 
-          deviceDetails: devData?.find(d => String(d.device_sn).trim().toLowerCase() === String(req.device_sn).trim().toLowerCase()) 
+      if (data?.length) {
+        const { data: devData } = await supabase.from("devices").select("device_sn, user_pass, user_name").in("device_sn", data.map((r: any) => r.device_sn));
+        setRequests(data.map((req: any) => ({
+          ...req,
+          deviceDetails: devData?.find((d: any) => String(d.device_sn).trim().toLowerCase() === String(req.device_sn).trim().toLowerCase())
         })));
-      } else {
-        setRequests([]);
-      }
-    } catch (err: any) { 
-      console.error("Fetch Error:", err.message); 
-    } finally { 
-      setLoading(false); 
-    }
+      } else { setRequests([]); }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   const generatePortalId = (sn: string) => {
@@ -85,54 +74,49 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
 
   const handleAction = async (req: any) => {
     try {
-      const finalPass = decryptData(req.deviceDetails?.user_pass || '');
-      const { error } = await supabase.from("requests").update({ status: 'done' }).eq("id", req.id);
-      if (error) throw error;
-
+      const finalPass = decryptData(req.deviceDetails?.user_pass || "");
+      await supabase.from("requests").update({ status: "done" }).eq("id", req.id);
       const portalId = generatePortalId(req.device_sn);
-      const rawMsg = `*🔐 CCTV ACCESS DETAILS*\n\n📍 *Site:* ${req.site_name}\n🆔 *Portal ID:* ${portalId}\n👤 *User Name:* user\n🛡️ *User Pass:* ${finalPass}\n\n${req.message ? `*Note:* ${req.message}\n\n` : ""}_Generated by MODERN ENTERPRISES_`;
-      
-      window.open(`https://api.whatsapp.com/send?phone=${req.mobile.replace(/\D/g, "").replace(/^91|/, "91")}&text=${encodeURIComponent(rawMsg)}`, '_blank');
-      
-      fetchRequests(); 
-      onRefresh(); 
-      if (filterSn) onClose();
-    } catch (err: any) { 
-      setDialog({ 
-        isOpen: true, title: "Action Failed", message: "Database update error.", type: "danger" 
-      }); 
-    }
+      const msg = `*🔐 CCTV ACCESS DETAILS*\n\n📍 *Site:* ${req.site_name}\n🆔 *Portal ID:* ${portalId}\n👤 *User Name:* user\n🛡️ *User Pass:* ${finalPass}\n\n_Generated by MODERN ENTERPRISES_`;
+      const mobile = req.mobile.replace(/\D/g, "");
+      window.open(`https://api.whatsapp.com/send?phone=${mobile.startsWith("91") ? mobile : `91${mobile}`}&text=${encodeURIComponent(msg)}`, "_blank");
+      fetchRequests(); onRefresh(); if (filterSn) onClose();
+    } catch (err) { console.error(err); }
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* 🚩 TOP LAYER FIX: z-[99999] handles browser header overlap */}
-      <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-slate-900/95 backdrop-blur-md animate-in fade-in duration-300 touch-none">
+      {/* 🚩 FULL SCREEN FIX: z-[99999] handles browser overlaps */}
+      <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300" 
+           style={{ height: '100dvh' }}>
         
-        <div className="w-full max-w-2xl bg-white h-full sm:h-auto sm:max-h-[85vh] rounded-t-[45px] sm:rounded-[50px] shadow-2xl overflow-hidden flex flex-col border-t sm:border border-white/20 relative">
+        {/* MODAL BOX */}
+        <div className="w-full max-w-2xl bg-[#f8fafc] rounded-t-[45px] sm:rounded-[45px] flex flex-col overflow-hidden relative shadow-2xl" 
+             style={{ maxHeight: 'calc(100dvh - 20px)' }}>
           
-          <div className="h-2.5 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-400 shrink-0"></div>
+          {/* Top Liquid Bar */}
+          <div className="h-2 w-full bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-400 shrink-0"></div>
 
-          {/* Header Section */}
-          <div className="p-7 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-[100] shrink-0 text-left">
+          {/* HEADER */}
+          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 text-left">
             <div>
-              <h2 className="text-xl font-[1000] text-slate-900 uppercase italic flex items-center gap-2.5 tracking-tighter leading-none">
-                <ShieldCheck className="text-blue-600" size={24} /> Tasks Manager
+              <h2 className="text-lg font-[1000] text-slate-900 uppercase italic flex items-center gap-2 tracking-tighter leading-none">
+                <ShieldCheck className="text-blue-600" size={22} /> Tasks Manager
               </h2>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[3px] mt-2">Managing Pending Access</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[2px] mt-1.5">Live Requests</p>
             </div>
-            <button onClick={onClose} className="p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl active:scale-90 border transition-all text-slate-400">
-              <X size={22} strokeWidth={3} />
+            <button onClick={onClose} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl active:scale-90 border transition-all text-slate-400 shadow-inner">
+              <X size={20} strokeWidth={3} />
             </button>
           </div>
 
-          {/* Scrollable Request Stream */}
-          <div className="p-5 overflow-y-auto space-y-5 bg-slate-50/50 flex-1 pb-32 overscroll-contain">
+          {/* SCROLLABLE CONTENT */}
+          <div className="p-4 overflow-y-auto space-y-4 bg-slate-50/50 flex-1 overscroll-contain pb-32">
             {loading ? (
               <div className="py-24 flex flex-col items-center gap-4">
-                <Loader2 className="animate-spin text-blue-600" size={36}/>
+                <Loader2 className="animate-spin text-blue-600" size={36} />
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[5px] italic">Syncing Live Node...</p>
               </div>
             ) : requests.length === 0 ? (
@@ -141,47 +125,32 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
                 <p className="text-xs uppercase tracking-[6px]">All Clear - No Tasks</p>
               </div>
             ) : (
-              requests.map(req => (
-                <div key={req.id} className="group relative p-6 rounded-[40px] border border-slate-200 bg-white shadow-sm hover:border-blue-200 transition-all text-left overflow-hidden border-l-[3px] border-l-blue-600">
-                  
+              requests.map((req: any) => (
+                <div key={req.id} className="group relative p-6 rounded-[35px] border border-slate-200 bg-white shadow-sm hover:border-blue-200 transition-all text-left overflow-hidden border-l-[3px] border-l-blue-600">
                   <div className="flex items-start justify-between gap-4 mb-5">
                     <h3 className="text-lg font-[1000] text-slate-900 uppercase italic leading-tight tracking-tight">{req.site_name}</h3>
-                    <span className="text-[10px] font-black text-slate-500 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100 uppercase italic">
-                      ID: {req.device_sn.slice(-8).toUpperCase()}
-                    </span>
+                    <span className="text-[10px] font-black text-slate-500 bg-slate-50 px-3 py-1 rounded-xl border border-slate-100 uppercase italic">ID: {req.device_sn.slice(-8).toUpperCase()}</span>
                   </div>
 
                   {req.message && (
-                    <div className="flex items-start gap-4 bg-blue-50/50 p-5 rounded-[25px] border border-blue-100 mb-5 animate-in slide-in-from-left duration-500">
+                    <div className="flex items-start gap-4 bg-blue-50/50 p-4 rounded-[20px] border border-blue-100 mb-5">
                       <MessageSquare size={18} className="text-blue-600 shrink-0 mt-0.5" />
                       <p className="text-[13px] font-bold text-blue-900 leading-snug italic">"{req.message}"</p>
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center justify-between gap-6 pt-6 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-6 pt-6 border-t border-slate-50">
                     <div className="flex items-center gap-6">
-                      
-                      {/* 🆔 Portal ID (With Divider) */}
-                      <div className="flex flex-col pr-8 border-r-2 border-slate-200">
+                      <div className="flex flex-col pr-8 border-r-2 border-slate-100">
                         <span className="text-[9px] font-black text-blue-500 uppercase tracking-[2px] leading-none">Portal ID</span>
-                        <span className="text-sm font-[1000] text-slate-800 mt-2.5 uppercase italic tracking-tighter">
-                           {generatePortalId(req.device_sn)}
-                        </span>
+                        <span className="text-sm font-[1000] text-slate-800 mt-2 uppercase italic tracking-tighter">{generatePortalId(req.device_sn)}</span>
                       </div>
-
-                      {/* 📱 User Contact */}
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[2px] leading-none">User Mobile</span>
-                        <span className="text-sm font-black text-slate-800 mt-2.5 italic tracking-tighter leading-none">
-                          {req.mobile}
-                        </span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[2px] leading-none">WhatsApp</span>
+                        <span className="text-sm font-black text-slate-800 mt-2 italic tracking-tighter">{req.mobile}</span>
                       </div>
                     </div>
-                    
-                    <button 
-                      onClick={() => handleAction(req)} 
-                      className="w-full sm:w-auto bg-blue-600 text-white px-10 py-4.5 rounded-[30px] flex items-center justify-center gap-3 text-[12px] font-[1000] uppercase tracking-widest shadow-2xl active:scale-95 transition-all border-b-[5px] border-blue-900 italic"
-                    >
+                    <button onClick={() => handleAction(req)} className="w-full sm:w-auto bg-blue-600 text-white px-10 py-4.5 rounded-[30px] flex items-center justify-center gap-3 text-[12px] font-[1000] uppercase tracking-widest shadow-2xl active:scale-95 transition-all border-b-[5px] border-blue-900 italic">
                       <MessageCircle size={20}/> Dispatch Access
                     </button>
                   </div>
@@ -192,11 +161,10 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
         </div>
       </div>
 
-      {/* 🚩 BUILD ERROR FIXED: Added required onConfirm prop */}
       <MasterDialog 
         isOpen={dialog.isOpen} 
-        onClose={() => setDialog(prev => ({ ...prev, isOpen: false }))} 
-        onConfirm={() => setDialog(prev => ({ ...prev, isOpen: false }))} 
+        onClose={() => setDialog(p => ({ ...p, isOpen: false }))} 
+        onConfirm={() => setDialog(p => ({ ...p, isOpen: false }))} 
         title={dialog.title} 
         message={dialog.message} 
         type={dialog.type} 
