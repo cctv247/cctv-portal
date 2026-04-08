@@ -45,59 +45,18 @@ export default function RequestPage() {
   }, [deviceId]);
 
   const handleRequest = async () => {
-    // Basic Validation
-    if (!mobile || mobile.length !== 10 || !/^[6-9]\d{9}$/.test(mobile)) {
-        setDialog({ isOpen: true, title: "Invalid Number", message: "Please enter a valid 10-digit WhatsApp number.", type: "warning" });
-        return;
-    }
-
+    if (mobile.length !== 10) return;
     setReqLoading(true);
     try {
-      // 1. Log in Supabase (For History)
       await supabase.from("requests").insert([{ 
-        device_sn: deviceId, 
-        site_name: device?.site_name, 
-        mobile, 
-        message: message || "Password Request", 
-        status: 'pending' 
+        device_sn: deviceId, site_name: device?.site_name, 
+        mobile, message: message || "General Maintenance", status: 'pending' 
       }]);
-
-      // 2. 🚀 Call Next.js API Route (Sends Resend Email)
-      const res = await fetch("/api/request-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          mobile: mobile, 
-          device_id: deviceId 
-        }),
-      });
-
-      const result = await res.json();
-      if (!result.success) throw new Error(result.error);
-
-      // 3. Success UI
-      setDialog({ 
-        isOpen: true, 
-        title: "Request Sent", 
-        message: `Request dispatched successfully. ${COMPANY.name} will contact you via WhatsApp shortly.`, 
-        type: "success" 
-      });
-      
-      setMobile(""); 
-      setMessage(""); 
-      setIsFormOpen(false);
-
-    } catch (err: any) {
-      console.error("Request Error:", err.message);
-      setDialog({ 
-        isOpen: true, 
-        title: "System Failure", 
-        message: "Request failed. Please check your connection or contact support directly.", 
-        type: "danger" 
-      });
-    } finally {
-      setReqLoading(false);
-    }
+      setDialog({ isOpen: true, title: "Request Sent", message: "Aapki request bhej di gayi hai. WhatsApp check karein.", type: "success" });
+      setMobile(""); setMessage(""); setIsFormOpen(false);
+    } catch (err) {
+      setDialog({ isOpen: true, title: "System Error", message: "Request fail ho gayi. Dubara try karein.", type: "danger" });
+    } finally { setReqLoading(false); }
   };
 
   if (loading) return (
@@ -111,7 +70,7 @@ export default function RequestPage() {
     <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-[420px] bg-white rounded-[45px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-white flex flex-col transition-all duration-500">
         
-        {/* Header */}
+        {/* Header - Friendly & Verified */}
         <div className="bg-[#f0f7ff] pt-10 pb-8 px-8 text-center border-b border-blue-50">
           <h1 className="text-2xl sm:text-3xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none truncate px-2">
             {device?.site_name}
@@ -127,6 +86,7 @@ export default function RequestPage() {
           {inRange ? (
             <div className="space-y-4">
               
+              {/* Help & Toggle Card */}
               <div className={`p-6 rounded-[35px] border-2 transition-all duration-500 ${isFormOpen ? 'bg-white border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
                 {!isFormOpen ? (
                   <button onClick={() => setIsFormOpen(true)} className="w-full flex flex-col items-center gap-3 active:scale-95 transition-all">
@@ -159,7 +119,7 @@ export default function RequestPage() {
                       className="w-full bg-blue-600 text-white py-4 rounded-[22px] font-black uppercase text-[10px] tracking-[3px] shadow-xl disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-blue-100"
                     >
                       {reqLoading ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
-                      Initialize Access
+                      Forgot password
                     </button>
                     
                     <button onClick={() => setIsFormOpen(false)} className="w-full text-[9px] font-black text-slate-400 uppercase tracking-[2px] pt-1">Cancel</button>
@@ -167,6 +127,7 @@ export default function RequestPage() {
                 )}
               </div>
 
+              {/* Log History */}
               <button onClick={() => setIsHistoryOpen(true)} className="w-full text-slate-400 font-black py-4 rounded-[25px] border-2 border-slate-100 flex items-center justify-center gap-3 active:scale-95 transition-all text-[10px] uppercase tracking-widest bg-white">
                 <HistoryIcon size={16} /> View Site History
               </button>
@@ -177,12 +138,13 @@ export default function RequestPage() {
                   <XCircle size={40} className="text-red-500" />
                </div>
                <h2 className="text-xl font-black uppercase italic text-slate-800">Out of Range</h2>
-               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[4px] px-4"> Please be present at the site and retry GPS. </p>
+               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[4px] px-4">Kripya site par pahunch kar GPS retry karein.</p>
                <button onClick={() => window.location.reload()} className="bg-slate-900 text-white px-10 py-5 rounded-[22px] font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-90 transition-all">Retry GPS</button>
             </div>
           )}
         </div>
 
+        {/* Footer */}
         <div className="pb-8 text-center">
             <p className="text-[8px] font-black text-slate-200 uppercase tracking-[5px] italic">Powered by {COMPANY.name}</p>
         </div>
