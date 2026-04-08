@@ -116,7 +116,7 @@ export default function RequestPage() {
                     <div className="p-3 bg-emerald-50 rounded-2xl mb-3 group-hover:bg-emerald-100 transition-colors">
                       <HistoryIcon className="text-emerald-500" size={28} />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 text-center leading-tight">Site<br/>History</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 text-center leading-tight">Maintenance<br/>History</span>
                   </button>
                 </div>
               )}
@@ -173,7 +173,7 @@ export default function RequestPage() {
 
         {/* Footer */}
         <div className="pb-8 text-center pt-6 border-t border-slate-50">
-            <p className="text-[8px] font-black text-slate-200 uppercase tracking-[5px] italic">Powered by {COMPANY.name}</p>
+            <p className="text-[8px] font-black text-slate-300 uppercase tracking-[5px] italic">Powered by {COMPANY.name}</p>
         </div>
       </div>
 
