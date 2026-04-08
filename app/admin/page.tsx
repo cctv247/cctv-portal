@@ -109,8 +109,10 @@ export default function AdminCentral() {
         };
 
         const validLogs = logs
-          .filter((l: any) => l.next_service_date)
-          .sort((a: any) => /* sorting logic */ 0);
+  .filter((l: any) => l.next_service_date)
+  .sort((a: any, b: any) => 
+    new Date(b.next_service_date).getTime() - new Date(a.next_service_date).getTime()
+  );
 
         return { ...decryptedDevice, next_service_date: validLogs[0]?.next_service_date || null };
       });
