@@ -5,6 +5,7 @@ export const COMPANY = {
   contact: "+91 7021330886",
   portalUrl: "https://cctv-portal.vercel.app/request",
   supportEmail: "me.cctv247@gmail.com",
+
   branding: {
     tagline: "Advanced Surveillance Systems",
     tagline2: "SECURITY SOLUTIONS & INTERIOR DECORATOR",

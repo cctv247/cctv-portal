@@ -23,15 +23,13 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState({ isOpen: false, title: "", message: "", type: "info" as any });
 
-  // 🚩 POLISH 1: Viewport Lock & Body Freeze (No Background Scroll)
+  // 🚩 VIEWPORT LOCK & BACKGROUND FREEZE
   useEffect(() => {
     if (isOpen) {
-      // Calculate scrollbar width to prevent "layout shift"
       const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = 'hidden';
       document.body.style.paddingRight = `${scrollBarWidth}px`;
       
-      // Setting dynamic VH for mobile address bar fixes
       const setVh = () => {
         let vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -60,7 +58,6 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
     } finally { setLoading(false); }
   };
 
-  // --- PDF LOGIC (Polished Output) ---
   const getBase64ImageFromURL = (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -77,6 +74,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
     });
   };
 
+  // 📄 PDF BRANDING & FOOTER ENGINE
   const applyBranding = async (doc: jsPDF) => {
     try {
       const imgData = await getBase64ImageFromURL("/logo.ico");
@@ -84,20 +82,43 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
     } catch (e) { console.warn("Logo missing"); }
     doc.setTextColor(30, 41, 59).setFontSize(14).setFont("helvetica", "bold").text(COMPANY?.name || "MODERN ENTERPRISES", 28, 16);
     doc.setFontSize(7).setFont("helvetica", "normal").text(`${COMPANY?.contact} | ${COMPANY?.supportEmail}`, 28, 20);
-    doc.setDrawColor(240).line(14, 25, 196, 25);
+    doc.setDrawColor(230).line(14, 25, 196, 25);
+  };
+
+  const addFooter = (doc: jsPDF) => {
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setDrawColor(230).line(14, pageHeight - 20, pageWidth - 14, pageHeight - 20);
+    doc.setFontSize(7).setTextColor(120).setFont("helvetica", "normal");
+    const tagline = COMPANY?.branding?.tagline2 || "Modern Enterprises | Industrial Security Solutions";
+    doc.text(tagline, 14, pageHeight - 14);
+    const dateStr = `Generated: ${new Date().toLocaleString('en-GB')}`;
+    doc.text(dateStr, pageWidth / 2 - 30, pageHeight - 14);
+    const pageNumber = (doc as any).internal.getNumberOfPages();
+    doc.text(`Page ${pageNumber}`, pageWidth - 14, pageHeight - 14, { align: "right" });
+    doc.setFontSize(6).setTextColor(160).setFont("helvetica", "italic");
+    doc.text("Computer Generated Report – No Signature Required", pageWidth / 2 - 40, pageHeight - 8);
   };
 
   const downloadMasterPDF = async () => {
     try {
       const doc = new jsPDF();
       await applyBranding(doc);
-      doc.setFontSize(11).setFont("helvetica", "bold").text(`SERVICE LOGS: ${siteName.toUpperCase()}`, 14, 35);
+      doc.setFontSize(11).setFont("helvetica", "bold").text(`SERVICE HISTORY: ${siteName.toUpperCase()}`, 14, 35);
+      
       autoTable(doc, {
         startY: 40,
-        head: [['DATE', 'ENGINEER', 'WORK DESCRIPTION']],
-        body: logs.map(log => [new Date(log.created_at).toLocaleDateString('en-GB'), log.technician_name.toUpperCase(), log.work_done]),
+        head: [['DATE', 'ENGINEER', 'JOB TYPE', 'WORK DESCRIPTION', 'STATUS']],
+        body: logs.map(log => [
+          new Date(log.created_at).toLocaleDateString('en-GB'), 
+          log.technician_name?.toUpperCase() || "N/A", 
+          (log.service_type || 'Service').toUpperCase(),
+          log.work_done || "N/A",
+          (log.status || 'Completed').toUpperCase()
+        ]),
         headStyles: { fillColor: [30, 41, 59] },
-        styles: { fontSize: 8 }
+        styles: { fontSize: 7, cellPadding: 3 },
+        didDrawPage: () => addFooter(doc)
       });
       doc.save(`Logs_${siteName}.pdf`);
     } catch (e) { console.error(e); }
@@ -108,18 +129,22 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       const doc = new jsPDF();
       await applyBranding(doc);
       doc.setFillColor(30, 41, 59).rect(14, 30, 182, 8, 'F');
-      doc.setTextColor(255).setFontSize(8).text("MAINTENANCE COMPLETION RECEIPT", 75, 35);
+      doc.setTextColor(255).setFontSize(8).text("MAINTENANCE COMPLETION SLIP", 85, 35);
+      
       autoTable(doc, {
-        startY: 45,
+        startY: 40,
         body: [
           ["SITE NAME", siteName.toUpperCase()],
-          ["ENGINEER", log.technician_name.toUpperCase()],
-          ["WORK DONE", log.work_done],
+          ["ENGINEER", log.technician_name?.toUpperCase() || "N/A"],
+          ["JOB TYPE", (log.service_type || "Routine Service").toUpperCase()],
+          ["STATUS", (log.status || "Completed").toUpperCase()],
+          ["WORK DESCRIPTION", log.work_done || "N/A"],
           ["DATE", new Date(log.created_at).toLocaleDateString('en-GB')],
           ["REMARKS", log.remarks || "No additional remarks"]
         ],
         theme: 'grid',
-        styles: { fontSize: 9, cellPadding: 4 }
+        styles: { fontSize: 9, cellPadding: 4 },
+        didDrawPage: () => addFooter(doc)
       });
       doc.save(`Slip_${siteName}.pdf`);
     } catch (e) { console.error(e); }
@@ -129,16 +154,12 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
 
   return (
     <>
-      {/* 🚩 POLISH 2: Smooth Fade Backdrop */}
       <div className="fixed inset-0 z-[999] bg-slate-900/60 backdrop-blur-md flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-        
-        {/* 🚩 POLISH 3: Modal Architecture with Viewport Lock */}
         <div 
           style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
           className="bg-white w-full max-w-xl sm:h-auto sm:max-h-[90vh] sm:rounded-[45px] shadow-2xl flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-500"
         >
-          
-          {/* 🚩 POLISH 4: Sticky Glass Header */}
+          {/* HEADER */}
           <header className="sticky top-0 z-[110] p-6 border-b border-slate-100 flex justify-between items-center bg-white/95 backdrop-blur-xl shrink-0">
             <div className="text-left">
               <h2 className="text-xl font-[1000] text-slate-800 uppercase italic tracking-tighter flex items-center gap-2 leading-none">
@@ -154,7 +175,6 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
             </div>
           </header>
 
-          {/* 🚩 POLISH 5: Smooth Scrolling Body with Tactile Cards */}
           <main className="flex-1 overflow-y-auto custom-scroll p-5 sm:p-8 space-y-5 bg-slate-50/40 scroll-smooth pb-32">
             {loading ? (
               <div className="py-32 flex flex-col items-center gap-4">
@@ -164,7 +184,6 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
             ) : logs.length > 0 ? (
               logs.map((log) => (
                 <div key={log.id} className="relative p-6 rounded-[35px] border-2 border-slate-100 bg-white shadow-sm hover:shadow-md transition-all group text-left">
-                  
                   <div className="flex justify-between items-center mb-5">
                     <span className="text-[10px] font-[1000] text-blue-600 bg-blue-50 px-4 py-2 rounded-full flex items-center gap-2 uppercase tracking-tight leading-none">
                       <Calendar size={12} /> {new Date(log.created_at).toLocaleDateString('en-GB')}
@@ -189,18 +208,29 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
                     <div className="flex items-start gap-4">
                       <div className="bg-orange-50 p-3 rounded-[20px] text-orange-500 border border-orange-100 mt-0.5"><Wrench size={16} /></div>
                       <div className="flex-1">
-                        <p className="text-slate-400 font-black text-[9px] uppercase tracking-[2px] leading-none">Work Details</p>
+                        <p className="text-slate-400 font-black text-[9px] uppercase tracking-[2px] leading-none">Job Summary</p>
                         <div className="text-sm text-slate-700 font-bold leading-relaxed mt-2 bg-slate-50/50 p-4 rounded-3xl border border-dashed border-slate-200">
                           {log.work_done}
                         </div>
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Job Type</p>
+                          <p className="text-[10px] font-bold text-slate-700 uppercase mt-1">{log.service_type || "Routine"}</p>
+                       </div>
+                       <div className={`p-3 rounded-2xl border ${log.status?.includes('Completed') ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
+                          <p className="text-[8px] font-black opacity-60 uppercase tracking-widest">Status</p>
+                          <p className="text-[10px] font-bold uppercase mt-1">{log.status || "Completed"}</p>
+                       </div>
+                    </div>
+
                     <div className="flex items-start gap-4">
                       <div className="bg-purple-50 p-3 rounded-[20px] text-purple-600 mt-0.5"><MessageSquare size={16} /></div>
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[2px] leading-none">Technician Remarks</p>
-                        <p className="text-sm text-slate-600 italic font-bold mt-2 leading-relaxed">"{log.remarks || 'Routine system maintenance completed.'}"</p>
+                        <p className="text-sm text-slate-600 italic font-bold mt-2 leading-relaxed">"{log.remarks || 'Routine maintenance completed.'}"</p>
                       </div>
                     </div>
 
@@ -210,7 +240,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
                           <Clock size={18} />
                           <div>
                             <p className="text-[8px] font-black uppercase opacity-70 leading-none">Next Visit</p>
-                            <p className="text-xs font-black uppercase mt-1">Next Service Date</p>
+                            <p className="text-xs font-black uppercase mt-1">Maintenance Due</p>
                           </div>
                         </div>
                         <span className="text-base font-[1000] italic">{new Date(log.next_service_date).toLocaleDateString('en-GB')}</span>
@@ -240,9 +270,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
 
       <style jsx global>{`
         .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-        @media (max-width: 640px) { .custom-scroll { -webkit-overflow-scrolling: touch; } }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}</style>
     </>
   );
