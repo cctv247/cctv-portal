@@ -90,7 +90,6 @@ export default function RequestManagerModal({ isOpen, onClose, onRefresh, filter
       });
 
       // 3. Immediate Redirect (Safari and Chrome friendly)
-      // window.location.href same tab redirect ke liye sabse best hai mobile par
       window.location.href = waUrl;
 
       if (filterSn) onClose();
