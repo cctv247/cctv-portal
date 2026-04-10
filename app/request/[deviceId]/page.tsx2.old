@@ -1,4 +1,5 @@
 "use client";
+//app/request/[deviceId]/page.tsx
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -27,9 +28,23 @@ export default function RequestPage() {
 
   useEffect(() => {
     const init = async () => {
+      // 1. Get User Role for Bypass Logic
+      const { data: { session } } = await supabase.auth.getSession();
+      const role = session?.user?.user_metadata?.role || "user";
+
+      // 2. Fetch Device Data
       const { data: dev } = await supabase.from("devices").select("*").eq("device_sn", deviceId).single();
       if (dev) {
         setDevice(dev);
+
+        // 🚩 MASTER LOGIC: Admin or Engineer bypasses GPS check
+        if (role === "super_admin" || role === "engineer") {
+          setInRange(true);
+          setLoading(false);
+          return;
+        }
+
+        // 3. Regular User GPS Check
         if ("geolocation" in navigator) {
           navigator.geolocation.getCurrentPosition((pos) => {
             const R = 6371000;
@@ -72,21 +87,21 @@ export default function RequestPage() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc]">
       <Loader2 className="animate-spin text-blue-600 mb-4" size={32} />
-      <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-400 italic">Verifying Geolocation...</p>
+      <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-400 italic">Authenticating Access...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-4 sm:p-6 text-left">
       <div className="w-full max-w-[420px] bg-white rounded-[45px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-white flex flex-col transition-all duration-500">
         
         {/* Header */}
-        <div className="bg-[#f0f7ff] pt-10 pb-8 px-8 text-center border-b border-blue-50">
+        <div className="bg-[#d5e0dd] pt-8 pb-6 px-6 text-center border-b border-blue-50">
           <h1 className="text-2xl sm:text-3xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none truncate px-2">
             {device?.site_name}
           </h1>
-          <div className="flex items-center justify-center gap-2 mt-3 text-emerald-500 bg-emerald-50 w-fit mx-auto px-4 py-1 rounded-full border border-emerald-100">
-             <CheckCircle2 size={12} className="animate-pulse" />
+          <div className="flex items-center justify-center gap-2 mt-3 text-emerald-500 bg-emerald-8 w-fit mx-auto px-4 py-1 rounded-full border border-emerald-100">
+             <CheckCircle2 size={14} className="animate-pulse" />
              <p className="text-emerald-700 font-bold text-[9px] tracking-[2px] uppercase">Location Sync Success</p>
           </div>
         </div>
@@ -121,7 +136,7 @@ export default function RequestPage() {
                 </div>
               )}
 
-              {/* Request Form (Shows when Forgot Password is clicked) */}
+              {/* Request Form */}
               {isFormOpen && (
                 <div className="space-y-4 animate-in slide-in-from-top-4 duration-500 bg-blue-50/30 p-6 rounded-[35px] border-2 border-blue-50">
                   <div className="text-center mb-4">
@@ -149,7 +164,7 @@ export default function RequestPage() {
                   <button 
                     onClick={handleRequest} 
                     disabled={reqLoading || mobile.length < 10}
-                    className="w-full bg-blue-600 text-white py-4 rounded-[22px] font-black uppercase text-[10px] tracking-[3px] shadow-xl disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-blue-600 text-white py-4 rounded-[22px] font-black uppercase text-[10px] tracking-[3px] shadow-xl shadow-blue-100 disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2 border-b-4 border-blue-800"
                   >
                     {reqLoading ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
                     Submit Request
@@ -165,7 +180,7 @@ export default function RequestPage() {
                   <XCircle size={40} className="text-red-500" />
                </div>
                <h2 className="text-xl font-black uppercase italic text-slate-800">Out of Range</h2>
-               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[4px] px-4"> Please be present at the site to sync GPS. </p>
+               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[4px] px-4 leading-relaxed"> Please be present at the site to sync GPS. </p>
                <button onClick={() => window.location.reload()} className="bg-slate-900 text-white px-10 py-5 rounded-[22px] font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-90 transition-all">Retry GPS Sync</button>
             </div>
           )}

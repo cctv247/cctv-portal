@@ -1,4 +1,5 @@
 "use client";
+//app/request/[deviceId]/page.tsx
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -61,27 +62,26 @@ export default function RequestPage() {
   }, [deviceId]);
 
   const handleRequest = async () => {
-    if (!mobile || mobile.length !== 10 || !/^[6-9]\d{9}$/.test(mobile)) {
-        setDialog({ isOpen: true, title: "Invalid Number", message: "Please enter a valid 10-digit mobile number.", type: "warning" });
-        return;
-    }
-    setReqLoading(true);
-    try {
-      await supabase.from("requests").insert([{ device_sn: deviceId, site_name: device?.site_name, mobile, message: message || "Password Request", status: 'pending' }]);
-      const res = await fetch("/api/request-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile, device_id: deviceId, message: message || "Password Request" }),
-      });
-      const result = await res.json();
-      if (!result.success) throw new Error(result.error);
+  if (!mobile || mobile.length !== 10) {
+      setDialog({ isOpen: true, title: "Error", message: "Please enter a valid 10-digit mobile number.", type: "warning" });
+      return;
+  }
+  setReqLoading(true);
+  try {
+    const res = await fetch("/api/request-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile, device_id: deviceId, message: message || "Password Request" }),
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
 
-      setDialog({ isOpen: true, title: "Success", message: "Request sent successfully. You will be contacted via WhatsApp.", type: "success" });
-      setMobile(""); setMessage(""); setIsFormOpen(false);
-    } catch (err: any) {
-      setDialog({ isOpen: true, title: "System Error", message: "Dispatch failed. Please check your connection.", type: "danger" });
-    } finally { setReqLoading(false); }
-  };
+    setDialog({ isOpen: true, title: "Success", message: "Request sent successfully. You will be contacted via WhatsApp.", type: "success" });
+    setMobile(""); setMessage(""); setIsFormOpen(false);
+  } catch (err: any) {
+    setDialog({ isOpen: true, title: "Error", message: "Dispatch failed. Please check your connection.", type: "danger" });
+  } finally { setReqLoading(false); }
+};
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc]">
