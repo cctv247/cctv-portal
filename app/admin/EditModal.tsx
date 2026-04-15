@@ -1,5 +1,5 @@
 "use client";
-// app/Admin/EditModal.tsx
+// app/Admin/EditModal.tsx_
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { COMPANY } from "@/lib/config";
