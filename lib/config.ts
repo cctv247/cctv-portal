@@ -3,6 +3,9 @@ export const COMPANY = {
   name: "Modern Enterprises",
   contact: "+91 7021330886",
   portalUrl: "https://cctv-portal.vercel.app/request",
+  portalName: "CCTV Portal",
+
+  // 📧 Emails centralized
   supportEmail: "me.cctv247@gmail.com",
   senderEmail: "wazahul@gmail.com",
 
@@ -19,9 +22,10 @@ export const COMPANY = {
   whatsapp: "https://wa.me/917021330886",
   website: "https://modernenterprises.com",
 },
+
   app: {
     name: "CCTV Portal",
-    version: "v2.0"
+    version: "v2.1"
   }
 
 };

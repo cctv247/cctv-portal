@@ -11,101 +11,102 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { mobile, device_id, message, date_time, is_authorized } = body;
 
-    // 🚩 FIX: TypeScript Null Check
+    // 🛡️ Build Safety Check
     if (!supabaseAdmin) {
-      console.error("Critical: supabaseAdmin is not initialized. Check environment variables.");
-      return NextResponse.json({ success: false, error: "Server Configuration Error" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "Server Config Error" }, { status: 500 });
     }
 
     const host = req.headers.get("host") || "localhost:3000";
     const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 
-    // --- 🛡️ STEP 1: RATE LIMITS (Matching with Mobile AND Device SN) ---
+    // --- 🛡️ STEP 1: RATE LIMITS ---
+    const cleanMobile = mobile?.replace(/\D/g, "");
     if (!is_authorized) {
-      const now = new Date();
-      const startOfDay = new Date(); 
-      startOfDay.setUTCHours(0, 0, 0, 0);
-
-      // 1. Daily Limit (Check by Mobile Only - Overall 3 requests per day)
-      const { count } = await supabaseAdmin
-        .from("requests")
-        .select("*", { count: 'exact', head: true })
-        .eq("mobile", mobile)
-        .gte("created_at", startOfDay.toISOString());
-
-      if (count !== null && count >= 3) {
-        return NextResponse.json({ success: false, error: "Daily limit (3 requests) reached. Please try again tomorrow." }, { status: 429 });
-      }
-
-      // 2. 10-Minute Cooldown (🚩 FIX: Match Mobile AND Device SN)
-      const { data: lastReq } = await supabaseAdmin
-        .from("requests")
-        .select("created_at")
-        .eq("mobile", mobile)
-        .eq("device_sn", device_id) // ✅ Ab ye specific device match karega
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (lastReq) {
-        const lastTime = new Date(lastReq.created_at).getTime();
-        const diffInSec = Math.floor((now.getTime() - lastTime) / 1000);
-
-        if (diffInSec < 600) { 
-          return NextResponse.json({ 
-            success: false, 
-            error: "A request for this device is already pending.", 
-            wait: 600 - diffInSec 
-          }, { status: 429 });
-        }
-      }
+      const startOfDay = new Date(); startOfDay.setUTCHours(0, 0, 0, 0);
+      const { count } = await supabaseAdmin.from("requests").select("id", { count: "exact", head: true }).eq("mobile", cleanMobile).gte("created_at", startOfDay.toISOString());
+      if (count && count >= 3) return NextResponse.json({ success: false, error: "Daily limit (3 requests) reached. Please try again tomorrow." }, { status: 429 });
     }
 
-    // --- 🔍 STEP 2: FETCH DEVICE ---
-    const { data: device, error: devErr } = await supabaseAdmin
-      .from("devices")
-      .select("*")
-      .eq("device_sn", device_id)
-      .single();
 
-    if (devErr || !device) return NextResponse.json({ success: false, error: "Device not found in system." }, { status: 404 });
+    // --- 🔍 STEP 2: FETCH DEVICE & INSERT REQUEST ---
+    const { data: device } = await supabaseAdmin.from("devices").select("*").eq("device_sn", device_id).single();
+    if (!device) return NextResponse.json({ success: false, error: "Device not found" }, { status: 404 });
 
-    // --- 📝 STEP 3: DATABASE INSERT ---
-    const { data: newRequest, error: reqErr } = await supabaseAdmin
-      .from("requests")
-      .insert([{ 
-        device_sn: device_id, 
-        site_name: device.site_name, 
-        mobile, 
-        message: message || "Password Request", 
-        status: 'pending',
-        date_time: date_time 
-      }])
-      .select('id').single();
+    const { data: newRequest } = await supabaseAdmin.from("requests").insert([{
+      device_sn: device_id, site_name: device.site_name, mobile: cleanMobile, message: message || "Password Request", status: 'pending', date_time
+    }]).select("id").single();
 
-    if (reqErr) throw new Error("DB Save Failed: " + reqErr.message);
+    if (!newRequest) throw new Error("Database logging failed");
 
-    // --- 📧 STEP 4: EMAIL NOTIFICATION ---
-    const finalPass = decryptData(device.user_pass);
-    const waMsg = `*🔐 CCTV ACCESS*%0A📍Site: ${device.site_name}%0A🆔ID: user%0A🛡️Pass: ${finalPass}`;
-    const approvalLink = `${baseUrl}/api/approve?reqId=${newRequest.id}&phone=91${mobile.replace(/\D/g, "")}&msg=${waMsg}`;
+    // 3. 🔓 PASSWORD DECRYPTION (Asli kaam yahan ho raha hai)
+    const finalPass = decryptData(device.user_pass) || "Contact Admin";
 
-    await resend.emails.send({
-      from: "CCTV Portal <onboarding@resend.dev>",
-      to: COMPANY?.senderEmail || "wazahul@gmail.com",
-      subject: `🚨 REQUEST: ${device.site_name}`,
-      html: `<div style="font-family:sans-serif; border:1px solid #eee; padding:30px; border-radius:20px;">
-               <h3>🔐 Access Request</h3>
-               <p><b>Site:</b> ${device.site_name}</p>
-               <p><b>Mobile:</b> ${mobile}</p>
-               <a href="${approvalLink}" style="background:#2563eb; color:#fff; padding:15px; border-radius:10px; text-decoration:none;">APPROVE</a>
-             </div>`
+    // 4. 🆔 PORTAL ID GENERATOR
+    const generatePortalId = (sn: string) => {
+      if (!sn || sn.length < 8) return "ME_ADMIN";
+      return `ME_${sn.slice(-8).slice(0, 4).toLowerCase()}`;
+    };
+    const portalId = generatePortalId(device.device_sn);
+
+    // 5. 🕒 Indian Timestamp
+    const requestTimestamp = new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit", month: "short", year: "numeric", 
+      hour: "2-digit", minute: "2-digit", hour12: true,
     });
 
-    return NextResponse.json({ success: true });
+    // --- 📱 STEP 6: WHATSAPP MESSAGE (🚩 Multi-line Template) ---
+    const rawMessage = `*🔐 CCTV ACCESS DETAILS*
 
+     📍 *Site:* ${device.site_name}
+     🆔 *Portal ID:* ${portalId}
+     👤 *User Name:* user
+     🛡️ *User Pass:* ${finalPass}
+
+     _Generated by ${COMPANY?.name || "Modern Enterprises"}_`;
+
+    const encodedMessage = encodeURIComponent(rawMessage);
+    const approvalLink = `${baseUrl}/api/approve?reqId=${newRequest.id}&phone=91${cleanMobile}&msg=${encodedMessage}`;
+
+    // --- 📧 STEP 7: EMAIL DISPATCH (To Admin) ---
+    await resend.emails.send({
+      from: `${COMPANY?.portalName || "CCTV Portal"} <onboarding@resend.dev>`,
+      to: COMPANY?.senderEmail || "wazahul@gmail.com",
+      subject: `🚨 REQUEST: ${device.site_name} | ${requestTimestamp}`,
+      html: `
+    <div style="font-family: sans-serif; border: 1px solid #e2e8f0; padding: 30px; border-radius: 24px; max-width: 500px; background: #ffffff; color: #0f172a;">
+      <h2 style="text-align: center; margin-bottom: 20px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; font-style: italic;">🔐 Access Request</h2>
+      
+      <div style="background: #f8fafc; padding: 20px; border-radius: 18px; border: 1px solid #f1f5f9; margin-bottom: 25px; line-height: 1.6;">
+        <p style="margin: 5px 0; font-size: 14px;"><b>📍 Site:</b> ${device.site_name}</p>
+        <p style="margin: 5px 0; font-size: 14px;"><b>🆔 Portal ID:</b> ${portalId}</p>
+        <p style="margin: 5px 0; font-size: 14px;"><b>📱 User Mobile:</b> ${mobile}</p>
+        
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #e2e8f0;">
+          <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8; font-weight: bold;">User Message:</p>
+          <p style="margin: 5px 0; font-size: 15px; color: #1e293b; font-weight: 600; font-style: italic;">
+            💬 "${message || "Password Request"}"
+          </p>
+        </div>
+
+        <p style="margin: 15px 0 0 0; color: #64748b; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+          ⏰ Requested At: ${requestTimestamp}
+        </p>
+      </div>
+
+      <a href="${approvalLink}" style="display: block; text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 20px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">
+         Process via WhatsApp
+      </a>
+
+      <p style="text-align: center; font-size: 10px; color: #cbd5e1; margin-top: 30px; letter-spacing: 3px; font-weight: bold; text-transform: uppercase;">
+        ${COMPANY?.name || "Modern Enterprises"} | ${COMPANY?.branding?.copyRightYear || "2026"}
+      </p>
+    </div>
+  `,
+});
+
+    return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
