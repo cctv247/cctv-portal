@@ -12,12 +12,7 @@ export default function Home() {
 
         <h1 className="text-white mb-5 text-xl">CCTV System</h1>
 
-        <button onClick={() => router.push("/user")}
-          className="w-full bg-green-500 p-2 mb-2 rounded">
-          👤 User
-        </button>
-
-        <button onClick={() => router.push("/engineer")}
+        <button onClick={() => router.push("/admin")}
           className="w-full bg-yellow-500 p-2 mb-2 rounded">
           🛠 Engineer
         </button>
