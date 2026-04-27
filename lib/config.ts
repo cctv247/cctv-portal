@@ -7,7 +7,7 @@ export const COMPANY = {
 
   // 📧 Emails centralized
   supportEmail: "me.cctv247@gmail.com",
-  senderEmail: "wazahul@gmail.com",
+  senderEmail: "me.cctv247@gmail.com",
 
   branding: {
     tagline: "Advanced Surveillance Systems",
