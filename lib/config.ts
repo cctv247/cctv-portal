@@ -2,7 +2,7 @@
 export const COMPANY = {
   name: "Modern Enterprises",
   contact: "+91 7021330886",
-  portalUrl: "https://cctv-portal.vercel.app/request",
+  portalUrl: "https://cctvportal.vercel.app/request",
   portalName: "CCTV Portal",
 
   // 📧 Emails centralized
