@@ -1,9 +1,5 @@
 "use client";
-/* Body section update
-1. import PermissionGate from "@/lib/components/PermissionGate";
-2. <PermissionGate />  
-lib import our tag add karne se hi kaam ho jaye ga
-🛡️ Har page par hardware monitor karega */
+
 import { useState, useEffect, useCallback } from "react";
 import { 
   ShieldAlert, MapPin, Camera, Settings2, X, 
@@ -36,9 +32,11 @@ export default function PermissionGate() {
       navigator.geolocation.getCurrentPosition(
         () => setStatus(p => ({ ...p, location: "granted" })),
         () => setStatus(p => ({ ...p, location: "denied" })),
-        { enableHighAccuracy: true, timeout: 5000 }
+        // Mobile GPS ke liye high accuracy zaroori hai
+        { enableHighAccuracy: true, timeout: 10000 } 
       );
     } else {
+      // ✅ Mobile par back camera hi open karega
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
         .then(stream => {
           stream.getTracks().forEach(t => t.stop());
@@ -60,43 +58,35 @@ export default function PermissionGate() {
 
   return (
     <>
-      {/* 🚨 Floating Trigger Button */}
+      {/* 🚨 Floating Trigger Button (Touch Optimized) */}
       <button 
         onClick={() => setIsOpen(true)} 
-        className="fixed bottom-6 right-6 z-[999] bg-red-600 text-white p-4 rounded-[25px] shadow-[0_20px_50px_rgba(220,38,38,0.4)] animate-bounce border-4 border-white flex items-center gap-0 hover:gap-3 group transition-all duration-500 ease-in-out active:scale-90 hover:scale-110"
+        className="fixed bottom-6 right-6 z-[999] bg-red-600 text-white p-4 rounded-[22px] shadow-2xl animate-bounce border-4 border-white flex items-center gap-0 group transition-all duration-500 active:scale-90"
       >
         <ShieldAlert size={26} className="shrink-0" />
         <span className="text-[11px] font-[1000] uppercase tracking-[2px] overflow-hidden max-w-0 group-hover:max-w-[120px] transition-all duration-500 whitespace-nowrap italic">Fix Access</span>
-        <span className="absolute -top-1 -right-1 flex h-4 w-4">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
-        </span>
       </button>
 
-      {/* 🎴 Modal Overlay */}
+      {/* 🎴 Modal Overlay (Mobile Friendly Scroll) */}
       {isOpen && (
-        <div className="fixed inset-0 z-[1000] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 font-sans text-left">
-          <div className="w-full max-w-[420px] bg-white rounded-[3rem] shadow-2xl border border-white animate-in zoom-in-95 p-8 relative overflow-hidden">
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-[420px] bg-white rounded-[3rem] shadow-2xl border border-white p-6 sm:p-8 relative">
             
-            {/* ✅ Header: Heading and Icon in the same line */}
+            {/* Header */}
             <div className="flex items-start justify-between mb-8">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
                 <div className="bg-slate-900 p-3 rounded-2xl text-blue-400 shadow-lg shrink-0">
                   <Settings2 size={24} />
                 </div>
-                <h2 className="text-2xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-[0.9] border-l-2 border-slate-100 pl-4">
+                <h2 className="text-xl sm:text-2xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-[0.9] border-l-2 border-slate-100 pl-3">
                   Hardware <br/> <span className="text-blue-600">Auth</span>entication
                 </h2>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)} 
-                className="bg-slate-50 p-2 rounded-xl text-slate-300 hover:text-red-500 transition-colors"
-              >
+              <button onClick={() => setIsOpen(false)} className="bg-slate-50 p-2 rounded-xl text-slate-300 hover:text-red-500 transition-colors">
                 <X size={20} />
               </button>
             </div>
 
-            {/* Status Cards */}
             <div className="space-y-4">
               <StatusCard label="LOCATION (GPS)" status={status.location} icon={<MapPin size={20}/>} onEnable={() => handleAction('location')} />
               <StatusCard label="SCANNER (CAMERA)" status={status.camera} icon={<Camera size={20}/>} onEnable={() => handleAction('camera')} />
@@ -104,40 +94,25 @@ export default function PermissionGate() {
 
             {/* Troubleshooting Steps */}
             {(status.location === "denied" || status.camera === "denied") && (
-              <div className="mt-8 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 animate-in slide-in-from-top-2 shadow-inner">
+              <div className="mt-8 p-5 bg-slate-50 rounded-[2.5rem] border border-slate-200 shadow-inner">
                 <p className="text-[10px] font-black text-slate-400 uppercase mb-4 italic tracking-widest text-center">Security Policy Fix</p>
                 <div className="space-y-3 mb-6">
-                  <Step num="1" text={<>URL bar mein <span className="text-blue-600 underline font-black">Lock (🔒)</span> ya <span className="text-blue-600 underline inline-flex items-center gap-1 font-black">Site Info <SlidersHorizontal size={10} /></span> ko dabayein.</>} />
-                  <Step num="2" text={<>Settings mein <span className="italic">Permissions</span> ko open karein.</>} />
-                  <Step num="3" text={<><span className="text-emerald-600 font-black italic">Allow</span> Location & Camera sensors.</>} />
+                  <Step num="1" text={<>URL bar mein <span className="text-blue-600 underline font-black italic">Lock (🔒)</span> ko dabayein.</>} />
+                  <Step num="2" text={<>Wahan <span className="italic">Permissions</span> ko allow karein.</>} />
                 </div>
 
-                {/* Manual Link Box */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 mb-4 relative shadow-sm">
-                  <div onClick={copySettingsLink} className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl cursor-pointer hover:border-blue-400 transition-all">
-                    <p className="text-[9px] font-mono text-slate-400 truncate tracking-tight uppercase font-bold italic">Copy Settings Link</p>
-                    {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} className="text-slate-400" />}
-                  </div>
-                  {copied && (
-                    <div className="mt-2 space-y-1 animate-in fade-in">
-                      <p className="text-[8px] font-black text-blue-600 uppercase flex items-center gap-1 italic"><MousePointer2 size={10}/> New Tab kholiye</p>
-                      <p className="text-[8px] font-black text-blue-600 uppercase flex items-center gap-1 italic"><ExternalLink size={10}/> Paste karke Enter karein</p>
-                    </div>
-                  )}
-                </div>
-
-                <button onClick={() => window.location.reload()} className="w-full py-4 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-[11px] uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg italic tracking-widest">
+                {/* Refresh for Mobile */}
+                <button onClick={() => window.location.reload()} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase flex items-center justify-center gap-2 active:scale-95 shadow-lg italic">
                   <RefreshCcw size={14} /> Refresh System
                 </button>
               </div>
             )}
 
-            {/* Bottom Action Button */}
             <button 
               disabled={!allClear}
               onClick={() => setIsOpen(false)}
-              className={`w-full mt-6 py-6 rounded-[2.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all duration-500 shadow-xl ${
-                allClear ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-slate-100 text-slate-300 scale-95 cursor-not-allowed'
+              className={`w-full mt-6 py-5 sm:py-6 rounded-[2.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all duration-500 shadow-xl ${
+                allClear ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-300'
               }`}
             >
               {allClear ? <>Portal Activated <ArrowRight size={20}/></> : <>Awaiting Auth <Zap className="animate-pulse" size={18}/></>}
@@ -149,34 +124,29 @@ export default function PermissionGate() {
   );
 }
 
-// ✅ Reusable Step Component
-function Step({ num, text }: { num: string, text: React.ReactNode }) {
+function Step({ num, text }: any) {
   return (
-    <div className="flex gap-3 items-start text-[11px] font-bold text-slate-700 leading-tight tracking-tight">
+    <div className="flex gap-3 items-start text-[11px] font-bold text-slate-700 leading-tight">
       <span className="bg-red-200 text-red-700 w-5 h-5 rounded-lg flex items-center justify-center text-[9px] shrink-0 font-black italic shadow-sm">{num}</span>
       <p>{text}</p>
     </div>
   );
 }
 
-// ✅ Status Card Component
 function StatusCard({ label, status, icon, onEnable }: any) {
   const isGranted = status === "granted";
-  const isDenied = status === "denied";
   return (
-    <div className={`p-1 rounded-[2.5rem] transition-all duration-500 ${isGranted ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-100 border border-slate-200 shadow-inner'}`}>
-      <div className="flex items-center justify-between p-4 bg-white rounded-[2.3rem] shadow-sm relative overflow-hidden group">
-        <div className="flex items-center gap-4 relative">
-          <div className={`p-3 rounded-2xl transition-all ${isGranted ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-50' : 'bg-slate-100 text-slate-400'}`}>{icon}</div>
+    <div className={`p-1 rounded-[2.5rem] transition-all duration-500 ${isGranted ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-100 border border-slate-200'}`}>
+      <div className="flex items-center justify-between p-4 bg-white rounded-[2.3rem] shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 sm:gap-4 relative">
+          <div className={`p-3 rounded-2xl transition-all ${isGranted ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>{icon}</div>
           <div className="text-left">
-            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1 italic tracking-widest">{label}</p>
-            <p className={`text-xs font-[1000] italic uppercase tracking-tighter ${isGranted ? 'text-emerald-600' : 'text-slate-700'}`}>{isGranted ? '✓ Verified' : isDenied ? '✕ Restricted' : 'Pending'}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">{label}</p>
+            <p className={`text-xs font-[1000] italic uppercase ${isGranted ? 'text-emerald-600' : 'text-slate-700'}`}>{isGranted ? '✓ Verified' : 'Pending'}</p>
           </div>
         </div>
-        {!isGranted && <button onClick={onEnable} className="bg-[#111827] text-white px-5 py-2.5 rounded-2xl text-[10px] font-[1000] uppercase italic tracking-widest active:scale-90 transition-all shadow-md">Enable</button>}
+        {!isGranted && <button onClick={onEnable} className="bg-[#111827] text-white px-5 py-2.5 rounded-2xl text-[10px] font-[1000] uppercase italic active:scale-90">Enable</button>}
       </div>
     </div>
   );
 }
-
-// Body section update<PermissionGate />  🛡️ Har page par hardware monitor karega 

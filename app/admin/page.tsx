@@ -8,7 +8,6 @@ import AuthGuard from "@/lib/components/AuthGuard";
 import RequestManagerModal, { RequestNotification } from "../request/RequestManagerModal";
 import { decryptData, encryptData } from '@/lib/crypto';
 import StickerModal from "@/lib/components/StickerModal";
-import QRScanner from "@/lib/components/QRScanner";
 import { 
   Search, Rocket, Pencil, MapPin, Plus, X,
   Loader2, LogOut, ClipboardList, 
@@ -210,7 +209,6 @@ export default function AdminCentral() {
     <AuthGuard allowedRoles={["super_admin", "engineer"]}> 
       <div className="min-h-screen bg-[#f8fafc] font-sans antialiased text-slate-800 pb-24 text-left">
         {/* --- STICKY HEADER --- */}
-        <QRScanner />
         <div className="sticky top-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-200/50 pb-5 pt-5 px-4">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3 italic">
