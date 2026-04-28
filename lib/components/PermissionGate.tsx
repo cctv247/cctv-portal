@@ -5,7 +5,6 @@
 2. <PermissionGate />  
 Tag add karne se hi kaam ho jayega. 🛡️ Har page par hardware monitor karega.
 */
-
 import { useState, useEffect, useCallback } from "react";
 import { 
   ShieldAlert, MapPin, Camera, Settings2, X, 
