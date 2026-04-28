@@ -18,8 +18,13 @@ export default function Home() {
         </button>
 
         <button onClick={() => router.push("/admin")}
-          className="w-full bg-red-500 p-2 rounded">
+          className="w-full bg-red-500 p-2 mb-2 rounded">
           👑 Admin
+        </button>
+
+        <button onClick={() => router.push("/permission")}
+          className="w-full bg-red-500 p-2 rounded">
+          👑 permission
         </button>
 
       </div>
