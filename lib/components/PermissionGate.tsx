@@ -1,55 +1,61 @@
 "use client";
 
-/* 🚀 Body section update:
-1. import PermissionGate from "@/lib/components/PermissionGate";
-2. <PermissionGate />  
-Tag add karne se hi kaam ho jayega. 🛡️ Har page par hardware monitor karega.
-*/
 import { useState, useEffect, useCallback } from "react";
 import { 
   ShieldAlert, MapPin, Camera, Settings2, X, 
-  Check, Copy, MousePointer2, ExternalLink, RefreshCcw,
-  Zap, ArrowRight, SlidersHorizontal
+  RefreshCcw, Zap, ArrowRight, SlidersHorizontal, 
+  Trash2, Smartphone, Monitor, Info, CheckCircle2, Copy, Check
 } from "lucide-react";
 
+/**
+ * 🛡️ Master Hardware Guard
+ * Supports: iOS (Safari/Chrome), Android, Windows (Chrome/Edge/Firefox)
+ */
 export default function PermissionGate() {
   const [status, setStatus] = useState({ location: "prompt", camera: "prompt" });
   const [isOpen, setIsOpen] = useState(false);
+  const [device, setDevice] = useState<"ios" | "android" | "windows">("android");
   const [copied, setCopied] = useState(false);
 
-  // 1. 🔄 Professional Scanner (Persistent Check)
+  // 1. 🔍 Universal Device & Permission Scanner
   const scanPermissions = useCallback(async () => {
-    if (typeof window === "undefined" || !navigator.permissions) return;
+    if (typeof window === "undefined") return;
+
+    // Detect Device Type
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) setDevice("ios");
+    else if (/windows/.test(ua)) setDevice("windows");
+    else setDevice("android");
+
     try {
       const [locStatus, camStatus] = await Promise.all([
         navigator.permissions.query({ name: "geolocation" as PermissionName }),
         navigator.permissions.query({ name: "camera" as PermissionName })
       ]);
 
-      const updateStatus = () => {
+      const update = () => {
         setStatus({ location: locStatus.state, camera: camStatus.state });
-        // Agar users settings se allow kar de toh modal khud band ho jaye
         if (locStatus.state === "granted" && camStatus.state === "granted") {
           setIsOpen(false);
         }
       };
 
-      updateStatus();
-      locStatus.onchange = updateStatus;
-      camStatus.onchange = updateStatus;
-    } catch (err) { 
-      console.warn("Scan failed, using manual fallback", err); 
+      update();
+      locStatus.onchange = update;
+      camStatus.onchange = update;
+    } catch (err) {
+      console.warn("Permission API limited on this browser.");
     }
   }, []);
 
-  useEffect(() => { 
-    scanPermissions(); 
-    // Mobile par jab user tab switch karke wapas aaye
+  useEffect(() => {
+    scanPermissions();
+    // Re-check when user comes back from Settings
     window.addEventListener('focus', scanPermissions);
     return () => window.removeEventListener('focus', scanPermissions);
   }, [scanPermissions]);
 
-  // 2. 📍 Action Handlers (Mobile Optimized)
+  // 2. ⚡ Manual Trigger Actions
   const handleAction = (type: 'location' | 'camera') => {
     if (type === 'location') {
       navigator.geolocation.getCurrentPosition(
@@ -79,25 +85,23 @@ export default function PermissionGate() {
 
   return (
     <>
-      {/* 🚨 Floating Trigger Button (With Hover Expansion) */}
+      {/* 🚨 Floating Trigger Button */}
       <button 
         onClick={() => setIsOpen(true)} 
-        className="fixed bottom-6 right-6 z-[999] bg-red-600 text-white p-4 rounded-[25px] shadow-[0_20px_50px_rgba(220,38,38,0.4)] animate-bounce border-4 border-white flex items-center gap-0 hover:gap-3 group transition-all duration-500 ease-in-out active:scale-90 hover:scale-110"
+        className="fixed bottom-6 right-6 z-[999] bg-red-600 text-white p-4 rounded-[22px] shadow-[0_20px_50px_rgba(220,38,38,0.5)] animate-bounce border-4 border-white active:scale-90 transition-all group"
       >
         <ShieldAlert size={26} className="shrink-0" />
-        <span className="text-[11px] font-[1000] uppercase tracking-[2px] overflow-hidden max-w-0 group-hover:max-w-[120px] transition-all duration-500 whitespace-nowrap italic">Fix Access</span>
         <span className="absolute -top-1 -right-1 flex h-4 w-4">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+          <span className="animate-ping absolute h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span className="relative rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
         </span>
       </button>
 
-      {/* 🎴 Modal Overlay */}
+      {/* 🎴 Master Modal Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-[1000] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300 font-sans text-left">
-          <div className="w-full max-w-[420px] bg-white rounded-[3.5rem] shadow-2xl border border-white animate-in zoom-in-95 p-8 relative overflow-hidden">
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-[420px] bg-white rounded-[3.5rem] shadow-2xl border border-white p-7 sm:p-8 relative">
             
-            {/* ✅ Header: Heading and Icon in the same line */}
             <div className="flex items-start justify-between mb-8">
               <div className="flex items-center gap-4">
                 <div className="bg-slate-900 p-3 rounded-2xl text-blue-400 shadow-lg shrink-0">
@@ -107,52 +111,63 @@ export default function PermissionGate() {
                   Hardware <br/> <span className="text-blue-600">Auth</span>entication
                 </h2>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)} 
-                className="bg-slate-100 p-2 rounded-xl text-slate-300 hover:text-red-500 transition-colors"
-              >
+              <button onClick={() => setIsOpen(false)} className="bg-slate-50 p-2 rounded-xl text-slate-300 hover:text-red-500 transition-all">
                 <X size={20} />
               </button>
             </div>
 
-            {/* Status Cards */}
-            <div className="space-y-4">
+            <div className="space-y-4 mb-8">
               <StatusCard label="LOCATION (GPS)" status={status.location} icon={<MapPin size={20}/>} onEnable={() => handleAction('location')} />
               <StatusCard label="SCANNER (CAMERA)" status={status.camera} icon={<Camera size={20}/>} onEnable={() => handleAction('camera')} />
             </div>
 
-            {/* Troubleshooting Steps (Lock + View Site Info) */}
+            {/* 🛠️ Troubleshooting Section */}
             {(status.location === "denied" || status.camera === "denied") && (
-              <div className="mt-8 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 animate-in slide-in-from-top-2 shadow-inner">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-4 italic tracking-widest text-center">Security Policy Fix</p>
-                <div className="space-y-3 mb-6">
-                  {/* Step 1: Universal Button Guide */}
-                  <Step num="1" text={<>URL bar mein <span className="text-blue-600 underline font-black italic">Lock (🔒)</span> ya <span className="text-blue-600 underline inline-flex items-center gap-1 font-black italic">View Site Info <SlidersHorizontal size={10} /></span> ko dabayein.</>} />
-                  <Step num="2" text={<>Menu mein <span className="italic">Site Settings</span> ya <span className="italic">Permissions</span> ko open karein.</>} />
-                  <Step num="3" text={<><span className="text-emerald-600 font-black italic">Allow</span> Location & Camera sensors ko enable karein.</>} />
+              <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 shadow-inner">
+                <div className="flex items-center gap-2 mb-4 justify-center">
+                  {device === 'windows' ? <Monitor size={14}/> : <Smartphone size={14}/>}
+                  <p className="text-[10px] font-black text-slate-500 uppercase italic tracking-widest italic">{device} Solution</p>
                 </div>
-
-                {/* Manual Link Box */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 mb-4 relative shadow-sm">
-                  <div onClick={copySettingsLink} className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl cursor-pointer hover:border-blue-400 transition-all">
-                    <p className="text-[9px] font-mono text-slate-400 truncate tracking-tight uppercase font-bold italic">Copy Settings Link</p>
-                    {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} className="text-slate-400" />}
-                  </div>
-                  {copied && (
-                    <div className="mt-2 space-y-1 animate-in fade-in">
-                      <p className="text-[8px] font-black text-blue-600 uppercase flex items-center gap-1 italic"><MousePointer2 size={10}/> New Tab kholiye</p>
-                      <p className="text-[8px] font-black text-blue-600 uppercase flex items-center gap-1 italic"><ExternalLink size={10}/> Paste karke Enter karein</p>
-                    </div>
+                
+                <div className="space-y-4 mb-6">
+                  {device === "ios" ? (
+                    <>
+                      <Step num="1" text={<>iPhone ki **Settings App** (Main) kholiye.</>} />
+                      <Step num="2" text={<>**Chrome** dhoond kar wahan Camera & Location toggle **ON** karein.</>} />
+                      <Step num="3" text={<>Agar toggle nahi hai toh **Privacy &gt; Camera** mein check karein.</>} />
+                    </>
+                  ) : device === "windows" ? (
+                    <>
+                      <Step num="1" text={<>URL bar mein **Lock (🔒)** par click karke Permission Reset karein.</>} />
+                      <Step num="2" text={<>Chrome Settings mein jaakar manually **Allow** karein.</>} />
+                      {/* PC Specific Settings Link */}
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 mt-2">
+                        <p className="text-[8px] font-black text-slate-400 uppercase mb-2 italic tracking-tighter">Direct Settings Link (PC)</p>
+                        <button onClick={copySettingsLink} className="w-full flex items-center justify-between bg-slate-50 p-2 rounded-lg hover:border-blue-300 border border-transparent transition-all">
+                          <span className="text-[9px] font-mono text-blue-600 truncate mr-2 italic">chrome://settings/content/siteDetails...</span>
+                          {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} className="text-slate-400" />}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Step num="1" text={<>Upar **Lock (🔒)** ya **Tune** icon ko dabayein.</>} />
+                      <Step num="2" text={<>**Site Settings** mein jaakar Reset ya Allow karein.</>} />
+                    </>
                   )}
                 </div>
 
-                <button onClick={() => window.location.reload()} className="w-full py-4 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-[11px] uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg italic tracking-widest">
-                  <RefreshCcw size={14} /> Refresh System
-                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="py-3 bg-white border border-red-100 text-red-500 rounded-2xl font-black text-[9px] uppercase flex items-center justify-center gap-2 active:scale-95 transition-all">
+                    <Trash2 size={12} /> Clear Cache
+                  </button>
+                  <button onClick={() => window.location.reload()} className="py-3 bg-slate-900 text-white rounded-2xl font-black text-[9px] uppercase flex items-center justify-center gap-2 active:scale-95 shadow-lg italic tracking-widest">
+                    <RefreshCcw size={12} /> Refresh
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* Bottom Action Button */}
             <button 
               disabled={!allClear}
               onClick={() => setIsOpen(false)}
@@ -160,7 +175,7 @@ export default function PermissionGate() {
                 allClear ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-slate-100 text-slate-300 scale-95 cursor-not-allowed'
               }`}
             >
-              {allClear ? <>Portal Activated <ArrowRight size={20}/></> : <>Awaiting Auth <Zap className="animate-pulse" size={18}/></>}
+              {allClear ? <>Portal Activated <CheckCircle2 size={20}/></> : <>Awaiting Auth <Zap className="animate-pulse" size={18}/></>}
             </button>
           </div>
         </div>
@@ -169,17 +184,15 @@ export default function PermissionGate() {
   );
 }
 
-// ✅ Reusable Step Component
-function Step({ num, text }: { num: string, text: React.ReactNode }) {
+function Step({ num, text }: any) {
   return (
-    <div className="flex gap-3 items-start text-[11px] font-bold text-slate-700 leading-tight tracking-tight">
-      <span className="bg-red-200 text-red-700 w-5 h-5 rounded-lg flex items-center justify-center text-[9px] shrink-0 font-black italic shadow-sm">{num}</span>
-      <p>{text}</p>
+    <div className="flex gap-3 items-start text-[11px] font-bold text-slate-700 leading-tight">
+      <span className="bg-red-200 text-red-700 w-5 h-5 rounded-lg flex items-center justify-center text-[9px] shrink-0 font-[1000] italic shadow-sm">{num}</span>
+      <p className="tracking-tight italic">{text}</p>
     </div>
   );
 }
 
-// ✅ Status Card Component
 function StatusCard({ label, status, icon, onEnable }: any) {
   const isGranted = status === "granted";
   const isDenied = status === "denied";
@@ -189,7 +202,7 @@ function StatusCard({ label, status, icon, onEnable }: any) {
         <div className="flex items-center gap-4 relative">
           <div className={`p-3 rounded-2xl transition-all ${isGranted ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-50' : 'bg-slate-100 text-slate-400'}`}>{icon}</div>
           <div className="text-left">
-            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1 italic tracking-widest">{label}</p>
+            <p className="text-[9px] font-[1000] text-slate-400 uppercase leading-none mb-1 italic tracking-widest">{label}</p>
             <p className={`text-xs font-[1000] italic uppercase tracking-tighter ${isGranted ? 'text-emerald-600' : 'text-slate-700'}`}>{isGranted ? '✓ Verified' : isDenied ? '✕ Restricted' : 'Pending'}</p>
           </div>
         </div>

@@ -1,0 +1,182 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { 
+  ShieldAlert, MapPin, Camera, Settings2, X, 
+  RefreshCcw, Zap, ArrowRight, SlidersHorizontal, 
+  Trash2, Smartphone, Monitor, Info
+} from "lucide-react";
+
+export default function PermissionGate() {
+  const [status, setStatus] = useState({ location: "prompt", camera: "prompt" });
+  const [isOpen, setIsOpen] = useState(false);
+  const [deviceType, setDeviceType] = useState<"ios" | "android" | "windows">("android");
+
+  // 1. 🔍 Universal Device & Permission Scanner
+  const scanPermissions = useCallback(async () => {
+    if (typeof window === "undefined") return;
+
+    // Detect Device Type
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) setDeviceType("ios");
+    else if (/windows/.test(ua)) setDeviceType("windows");
+    else setDeviceType("android");
+
+    try {
+      const [locStatus, camStatus] = await Promise.all([
+        navigator.permissions.query({ name: "geolocation" as PermissionName }),
+        navigator.permissions.query({ name: "camera" as PermissionName })
+      ]);
+
+      const update = () => {
+        setStatus({ location: locStatus.state, camera: camStatus.state });
+        if (locStatus.state === "granted" && camStatus.state === "granted") setIsOpen(false);
+      };
+
+      update();
+      locStatus.onchange = update;
+      camStatus.onchange = update;
+    } catch (err) {
+      console.warn("Permission API limited on this browser.");
+    }
+  }, []);
+
+  useEffect(() => {
+    scanPermissions();
+    window.addEventListener('focus', scanPermissions);
+    return () => window.removeEventListener('focus', scanPermissions);
+  }, [scanPermissions]);
+
+  // 2. ⚡ Manual Trigger Actions
+  const handleAction = (type: 'location' | 'camera') => {
+    if (type === 'location') {
+      navigator.geolocation.getCurrentPosition(
+        () => scanPermissions(),
+        () => setStatus(p => ({ ...p, location: "denied" })),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => {
+          stream.getTracks().forEach(t => t.stop());
+          scanPermissions();
+        })
+        .catch(() => setStatus(p => ({ ...p, camera: "denied" })));
+    }
+  };
+
+  const hardReset = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.reload();
+  };
+
+  if (status.location === "granted" && status.camera === "granted") return null;
+
+  return (
+    <>
+      {/* 🚨 Floating Fix Button */}
+      <button 
+        onClick={() => setIsOpen(true)} 
+        className="fixed bottom-6 right-6 z-[999] bg-red-600 text-white p-4 rounded-[22px] shadow-2xl animate-bounce border-4 border-white flex items-center gap-0 group transition-all duration-500 hover:scale-110 active:scale-90"
+      >
+        <ShieldAlert size={26} className="shrink-0" />
+        <span className="text-[11px] font-black uppercase tracking-widest overflow-hidden max-w-0 group-hover:max-w-[120px] transition-all duration-500 whitespace-nowrap italic ml-0 group-hover:ml-3">Fix Access</span>
+      </button>
+
+      {/* 🎴 Master Modal */}
+      {isOpen && (
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-[420px] bg-white rounded-[3.5rem] shadow-2xl border border-white p-6 sm:p-8 relative">
+            
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="bg-slate-900 p-3 rounded-2xl text-blue-400 shadow-lg"><Settings2 size={24} /></div>
+                <h2 className="text-2xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-[0.9] border-l-2 border-slate-100 pl-4">Hardware <br/> <span className="text-blue-600">Auth</span>entication</h2>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="bg-slate-50 p-2 rounded-xl text-slate-300"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <StatusCard label="LOCATION (GPS)" status={status.location} icon={<MapPin size={20}/>} onEnable={() => handleAction('location')} />
+              <StatusCard label="SCANNER (CAMERA)" status={status.camera} icon={<Camera size={20}/>} onEnable={() => handleAction('camera')} />
+            </div>
+
+            {/* 🛠️ Conditional Instructions based on Device */}
+            {(status.location === "denied" || status.camera === "denied") && (
+              <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 shadow-inner">
+                <div className="flex items-center gap-2 mb-4 justify-center">
+                  {deviceType === 'windows' ? <Monitor size={14}/> : <Smartphone size={14}/>}
+                  <p className="text-[10px] font-black text-slate-500 uppercase italic tracking-widest">{deviceType} Instructions</p>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  {deviceType === "ios" ? (
+                    // 🍏 iPhone Guide
+                    <>
+                      <Step num="1" text="iPhone **Settings App** > **Safari** mein jayein." />
+                      <Step num="2" text="Niche **Camera & Location** ko 'Allow' par set karein." />
+                    </>
+                  ) : deviceType === "windows" ? (
+                    // 💻 PC Guide
+                    <>
+                      <Step num="1" text="URL bar mein **Lock (🔒)** par click karke Permissions Reset karein." />
+                      <Step num="2" text="Browser ki Global Settings mein Camera ON check karein." />
+                    </>
+                  ) : (
+                    // 🤖 Android Guide
+                    <>
+                      <Step num="1" text="Upar **Lock (🔒)** ya **View Site Info** icon ko dabayein." />
+                      <Step num="2" text="**Site Settings** mein jaakar Dono ko **Allow** karein." />
+                    </>
+                  )}
+                  <Step num="+" text="Stuck? 'Reset Cache' dabayein aur Refresh karein." />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={hardReset} className="py-3 bg-white border border-red-100 text-red-500 rounded-2xl font-black text-[9px] uppercase flex items-center justify-center gap-2 active:scale-95">
+                    <Trash2 size={12} /> Reset Cache
+                  </button>
+                  <button onClick={() => window.location.reload()} className="py-3 bg-slate-900 text-white rounded-2xl font-black text-[9px] uppercase flex items-center justify-center gap-2 active:scale-95 shadow-lg italic">
+                    <RefreshCcw size={12} /> Refresh
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button disabled={!(status.location === "granted" && status.camera === "granted")} onClick={() => setIsOpen(false)} className={`w-full mt-6 py-5 rounded-[2.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all duration-500 ${ (status.location === "granted" && status.camera === "granted") ? 'bg-blue-600 text-white shadow-xl' : 'bg-slate-100 text-slate-300'}`}>
+              {(status.location === "granted" && status.camera === "granted") ? <>Verified <ArrowRight size={20}/></> : <>Awaiting Auth <Zap className="animate-pulse" size={18}/></>}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Step({ num, text }: any) {
+  return (
+    <div className="flex gap-3 items-start text-[11px] font-bold text-slate-700 leading-tight">
+      <span className="bg-red-200 text-red-700 w-5 h-5 rounded-lg flex items-center justify-center text-[9px] shrink-0 font-black italic">{num}</span>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+function StatusCard({ label, status, icon, onEnable }: any) {
+  const isGranted = status === "granted";
+  return (
+    <div className={`p-1 rounded-[2.5rem] transition-all duration-500 ${isGranted ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-100 border border-slate-200 shadow-inner'}`}>
+      <div className="flex items-center justify-between p-4 bg-white rounded-[2.3rem] shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className={`p-3 rounded-2xl ${isGranted ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-50' : 'bg-slate-100 text-slate-400'}`}>{icon}</div>
+          <div className="text-left">
+            <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1 italic">{label}</p>
+            <p className={`text-xs font-[1000] italic uppercase ${isGranted ? 'text-emerald-600' : 'text-slate-700'}`}>{isGranted ? '✓ Verified' : 'Access Needed'}</p>
+          </div>
+        </div>
+        {!isGranted && <button onClick={onEnable} className="bg-[#111827] text-white px-5 py-2.5 rounded-2xl text-[10px] font-[1000] uppercase italic active:scale-90">Enable</button>}
+      </div>
+    </div>
+  );
+}
