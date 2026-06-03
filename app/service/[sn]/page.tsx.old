@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 // app/service/[sn]/page.tsx
 import { useState, useEffect } from 'react';
 import { COMPANY } from '@/lib/config';
@@ -131,23 +131,23 @@ export default function ServiceReportPage() {
 
   return (
     <AuthGuard allowedRoles={["super_admin", "engineer"]}>
-    <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-slate-900/10 backdrop-blur-sm sm:items-center">
+    <div className="fixed inset-0 bg-slate-900/10 flex items-stretch sm:items-center justify-center z-[100] backdrop-blur-sm">
       
       {/* ✨ HMODAL MAIN CONTAINER */}
       <div 
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
-        className="animate-in slide-in-from-bottom relative flex w-full max-w-xl flex-col overflow-hidden bg-white shadow-2xl duration-700 sm:h-auto sm:max-h-[95vh] sm:rounded-[40px]"
+        className="w-full max-w-xl bg-white sm:h-auto sm:max-h-[95vh] sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-700"
       >
         
         {/* 🏗️ HMODAL STICKY HEADER (No Line Look) */}
-        <div className="sticky top-0 z-[110] flex shrink-0 items-center justify-between bg-white/95 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-xl">
-          <div className="flex items-center gap-3 text-left italic">
-            <div className="rounded-xl bg-blue-600 p-2.5 text-white shadow-lg shadow-blue-100">
+        <div className="sticky top-0 z-[110] bg-white/95 backdrop-blur-xl p-4 flex justify-between items-center shrink-0 pt-[calc(env(safe-area-inset-top)+1rem)]">
+          <div className="flex items-center gap-3 italic text-left">
+            <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-100">
               <ClipboardCheck size={20} />
             </div>
             <div>
-              <h3 className="text-lg leading-none font-[1000] tracking-tighter text-slate-900 uppercase italic">Create Service Report</h3>
-              <p className="mt-1 leading-none font-black tracking-[3px] text-[9px] text-blue-500 uppercase italic"> {COMPANY?.name || "Modern Enterprises"}</p>
+              <h3 className="text-lg font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none">Create Service Report</h3>
+              <p className="text-[9px] font-black text-blue-500 uppercase tracking-[3px] mt-1 leading-none italic"> {COMPANY?.name || "Modern Enterprises"}</p>
             </div>
           </div>
           <button onClick={() => router.back()} className="p-2.5 bg-slate-100 rounded-xl text-slate-400 active:scale-90 border border-slate-200/50">
@@ -156,51 +156,51 @@ export default function ServiceReportPage() {
         </div>
 
         {/* 📝 HMODAL SCROLLABLE BODY */}
-        <div className="custom-scroll flex-1 touch-pan-y space-y-6 overflow-y-auto overscroll-contain bg-[#fcfdfe] px-5 pt-5 pb-40 text-left sm:px-8">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-8 space-y-6 pt-5 pb-40 text-left overscroll-contain touch-pan-y custom-scroll bg-[#fcfdfe]">
           
           {/* Status Badges */}
-          <div className="animate-in fade-in flex flex-wrap gap-2 duration-500">
-            <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-white">
+          <div className="flex flex-wrap gap-2 animate-in fade-in duration-500">
+            <div className="px-3 py-1 bg-slate-900 text-white rounded-full flex items-center gap-2 border border-slate-700">
               <ShieldCheck size={10} className="text-emerald-400" />
-              <span className="font-black tracking-widest text-[9px] uppercase">{displayName}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">{displayName}</span>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+            <div className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-full flex items-center gap-2">
               <Tag size={10} className="text-blue-500" />
-              <span className="font-mono font-black tracking-wider text-[9px] text-slate-500">SN: {sn}</span>
+              <span className="text-[9px] font-mono font-black text-slate-500 tracking-wider">SN: {sn}</span>
             </div>
           </div>
 
-          <h2 className="border-l-4 border-blue-500 pl-3 font-black tracking-[4px] text-slate-400 text-[10px] uppercase italic">
+          <h2 className="text-slate-400 font-black text-[10px] uppercase tracking-[4px] italic border-l-4 border-blue-500 pl-3">
             {device?.site_name || 'Loading Site...'}
           </h2>
 
           <div className="space-y-5">
             {/* Technician Name */}
             <div className="space-y-1.5">
-              <label className="ml-3 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
+              <label className="text-[9px] font-black text-slate-400 uppercase ml-3 tracking-widest italic flex items-center gap-2">
                 <User size={12} className="text-blue-500" /> Technician
               </label>
               <div className="relative">
-                <input type="text" className="w-full rounded-2xl border border-slate-200 bg-white p-3.5 text-xs font-black text-slate-700 italic shadow-sm transition-all outline-none focus:border-blue-500"
+                <input type="text" className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl outline-none text-xs font-black text-slate-700 focus:border-blue-500 shadow-sm transition-all italic"
                   value={formData.technician_name} onChange={(e) => setFormData({...formData, technician_name: e.target.value})} />
-                <Edit3 size={14} className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-300" />
+                <Edit3 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" />
               </div>
             </div>
 
             {/* Work Done */}
             <div className="space-y-1.5">
-              <label className="ml-3 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
+              <label className="text-[9px] font-black text-slate-400 uppercase ml-3 tracking-widest italic flex items-center gap-2">
                 <Wrench size={12} className="text-blue-500" /> Work Description
               </label>
-              <textarea className="min-h-[110px] w-full resize-none rounded-[25px] border border-slate-200 bg-white p-5 text-xs font-bold text-slate-700 shadow-inner transition-all outline-none focus:border-blue-500"
+              <textarea className="w-full p-5 bg-white border border-slate-200 rounded-[25px] outline-none font-bold text-slate-700 focus:border-blue-500 transition-all min-h-[110px] shadow-inner text-xs resize-none"
                 placeholder="Brief technical details of fixed issues..." value={formData.work_done} onChange={(e) => setFormData({...formData, work_done: e.target.value})} />
             </div>
 
             {/* Grid Row */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="ml-3 font-black text-[9px] text-slate-400 uppercase italic">Job Type</label>
-                <select className="w-full cursor-pointer appearance-none rounded-2xl border-none bg-slate-50 p-3.5 font-black text-slate-600 text-[10px] shadow-sm outline-none"
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-3 italic">Job Type</label>
+                <select className="w-full p-3.5 bg-slate-50 border-none rounded-2xl font-black text-slate-600 outline-none text-[10px] shadow-sm cursor-pointer appearance-none"
                   value={formData.service_type} onChange={(e)=>setFormData({...formData, service_type: e.target.value})}>
                   <option value="Routine Service">Routine Service</option>
                   <option value="Breakdown">Breakdown</option>
@@ -209,7 +209,7 @@ export default function ServiceReportPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="ml-3 font-black text-[9px] text-slate-400 uppercase italic">Status</label>
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-3 italic">Status</label>
                 <select className={`w-full p-3.5 rounded-2xl font-black outline-none text-[10px] shadow-sm appearance-none ${formData.status.includes('✅') ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}
                   value={formData.status} onChange={(e)=>setFormData({...formData, status: e.target.value})}>
                   <option value="Completed ✅">Completed ✅</option>
@@ -220,40 +220,40 @@ export default function ServiceReportPage() {
 
             {/* Remarks */}
             <div className="space-y-1.5">
-              <label className="ml-3 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
+              <label className="text-[9px] font-black text-slate-400 uppercase ml-3 tracking-widest italic flex items-center gap-2">
                 <MessageSquare size={12} className="text-blue-500" /> Technical Remarks
               </label>
-              <input className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-xs font-bold text-slate-700 shadow-sm transition-all outline-none focus:border-blue-500" 
+              <input className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm text-xs" 
                 placeholder="Additional engineer notes..." value={formData.remarks} onChange={(e)=>setFormData({...formData, remarks: e.target.value})} />
             </div>
 
             {/* Next Visit */}
             <div className={`p-5 rounded-[30px] border-2 transition-all ${formData.next_service_date ? 'border-emerald-100 bg-emerald-50/30 shadow-inner' : 'border-slate-50 bg-slate-50'}`}>
-              <label className="flex items-center gap-2 leading-none font-black tracking-[2px] text-[10px] text-emerald-700 uppercase italic">
+              <label className="text-[10px] font-black text-emerald-700 uppercase flex items-center gap-2 tracking-[2px] italic leading-none">
                 <Calendar size={12} /> Schedule Next Visit
               </label>
-              <input type="date" className="mt-2 w-full cursor-pointer border-none bg-transparent text-base font-black text-emerald-900 outline-none" 
+              <input type="date" className="w-full bg-transparent border-none outline-none font-black text-emerald-900 mt-2 cursor-pointer text-base" 
                 onChange={(e)=>setFormData({...formData, next_service_date: e.target.value})} />
             </div>
           </div>
 
           {/* 🚩 FOOTER ACTION */}
-          <div className="relative z-[50] pt-4 pb-20">
+          <div className="pt-4 pb-20 relative z-[50]">
             <button 
               onClick={handleSaveReport} disabled={loading}
-              className="flex w-full items-center justify-center gap-3 rounded-[25px] border-black border-b-[6px] bg-slate-900 py-5 text-sm font-black tracking-[4px] text-white uppercase italic shadow-xl transition-all active:scale-95"
+              className="w-full bg-slate-900 text-white font-black py-5 rounded-[25px] flex items-center justify-center gap-3 transition-all active:scale-95 text-sm uppercase tracking-[4px] italic shadow-xl border-b-[6px] border-black"
             >
               {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />} 
               Submit Report
             </button>
-            <p className="mt-8 text-center leading-none font-[1000] tracking-tighter text-[22px] text-emerald-200 uppercase italic sm:text-[10px]">
+            <p className="text-[22px] text-center mt-8 sm:text-[10px] font-[1000] text-emerald-200 tracking-tighter uppercase italic leading-none">
              <span>
               {(COMPANY?.app?.name || "Cctv Portal").split(' ')[0]}
              </span>
-             <span className="ml-1.5 text-blue-200 italic">
+             <span className="text-blue-200 italic ml-1.5">
               {(COMPANY?.app?.name || "Cctv Portal").split(' ')[1] || ""}
              </span>
-             <span className="ml-3 font-black tracking-[2px] text-blue-300/50 text-[14px] italic sm:text-[8px]">
+             <span className="text-blue-300/50 italic text-[14px] sm:text-[8px] ml-3 tracking-[2px] font-black">
               {COMPANY?.app?.version || "v2.0"}
              </span>
             </p>
