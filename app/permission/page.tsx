@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { 
@@ -17,32 +17,56 @@ export default function UltimateHardwareGuard() {
 
   const [copied, setCopied] = useState(false);
 
+  // 🛡️ BULLETPROOF PERMISSION SCANNER WITH IOS COMPATIBILITY FALLBACKS
   const scanPermissions = useCallback(async () => {
-    if (!navigator.permissions || !navigator.mediaDevices) {
-      setStatus(prev => ({ ...prev, isSupported: false, loading: false }));
+    // Basic verification framework checks
+    if (typeof window === "undefined" || !navigator.permissions) {
+      setStatus(prev => ({ ...prev, loading: false }));
       return;
     }
+
     try {
-      const [locStatus, camStatus] = await Promise.all([
-        navigator.permissions.query({ name: "geolocation" as PermissionName }),
-        navigator.permissions.query({ name: "camera" as PermissionName })
-      ]);
+      // 🛠️ Safe Query Framework Injection
+      const locStatus = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+      let camStatusState = "prompt";
+
+      try {
+        // Safe casting wrapper string hook to pass tight Turbopack compilers smoothly
+        const camStatus = await navigator.permissions.query({ name: "camera" as any });
+        camStatusState = camStatus.state;
+        
+        camStatus.onchange = () => {
+          setStatus(p => ({ ...p, camera: camStatus.state }));
+        };
+      } catch (camErr) {
+        // Fallback for Safari/iOS devices where camera permission query returns undefined
+        console.warn("Native camera query metadata bypass active for this client session.");
+      }
+
       setStatus(prev => ({
         ...prev,
         location: locStatus.state,
-        camera: camStatus.state,
+        camera: camStatusState,
         loading: false
       }));
-      locStatus.onchange = () => setStatus(p => ({ ...p, location: locStatus.state }));
-      camStatus.onchange = () => setStatus(p => ({ ...p, camera: camStatus.state }));
+
+      // Bind dynamic location state change handler updates
+      locStatus.onchange = () => {
+        setStatus(p => ({ ...p, location: locStatus.state }));
+      };
+
     } catch (err) {
+      console.error("Hardware gateway synchronization constraint cleared:", err);
       setStatus(prev => ({ ...prev, loading: false }));
     }
   }, []);
 
-  useEffect(() => { scanPermissions(); }, [scanPermissions]);
+  useEffect(() => { 
+    scanPermissions(); 
+  }, [scanPermissions]);
 
   const handleLocation = () => {
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       () => setStatus(p => ({ ...p, location: "granted" })),
       () => setStatus(p => ({ ...p, location: "denied" })),
@@ -51,6 +75,7 @@ export default function UltimateHardwareGuard() {
   };
 
   const handleCamera = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       stream.getTracks().forEach(t => t.stop());
@@ -70,83 +95,84 @@ export default function UltimateHardwareGuard() {
   const allClear = status.location === "granted" && status.camera === "granted";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-[420px] bg-white rounded-[3rem] shadow-2xl shadow-blue-100 overflow-hidden border border-slate-100">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans">
+      <div className="w-full max-w-[420px] overflow-hidden rounded-[3rem] border border-slate-100 bg-white shadow-2xl shadow-blue-100">
         
         <div className="p-8">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-10">
-            <div className="bg-slate-900 p-4 rounded-[1.5rem] rotate-3 shadow-lg text-blue-400">
+          {/* Header Dashboard Metrics */}
+          <div className="mb-10 flex items-center justify-between">
+            <div className="rotate-3 rounded-[1.5rem] bg-slate-900 p-4 text-blue-400 shadow-lg">
               <ShieldCheck size={24} />
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Security Shield</p>
-              <p className="text-xs font-black text-slate-800 uppercase italic">v4.5 Locked</p>
+              <p className="leading-none font-black tracking-widest text-[10px] text-slate-400 uppercase">Security Shield</p>
+              <p className="mt-1.5 text-xs font-black text-slate-800 uppercase italic">v4.5 Locked</p>
             </div>
           </div>
 
-          <h1 className="text-3xl font-[1000] text-slate-900 leading-[0.9] mb-4 uppercase italic tracking-tighter">
+          <h1 className="mb-4 text-left text-3xl leading-[0.9] font-[1000] tracking-tighter text-slate-900 uppercase italic">
             Hardware <br/> Authentication
           </h1>
 
-          <div className="space-y-4 mt-8">
+          {/* Core Hardware Authorization Matrix Rows */}
+          <div className="mt-8 space-y-4">
             <PermissionRow label="Location (GPS)" status={status.location} icon={<MapPin size={20}/>} onAction={handleLocation} />
             <PermissionRow label="Scanner (Camera)" status={status.camera} icon={<Camera size={20}/>} onAction={handleCamera} />
           </div>
 
-          {/* 🛠️ BLOCK GUIDE */}
+          {/* 🛠️ HARDWARE ACCESSIBILITY SYSTEM BLOCK GUIDE */}
           {(status.location === "denied" || status.camera === "denied") && (
-            <div className="mt-8 animate-in slide-in-from-top-4 duration-500">
-              <div className="bg-red-50 border-2 border-red-100 rounded-[2.5rem] p-6 shadow-sm">
-                <div className="flex gap-4 mb-4 text-red-700">
+            <div className="animate-in slide-in-from-top-4 mt-8 duration-500">
+              <div className="rounded-[2.5rem] border-2 border-red-100 bg-red-50 p-6 shadow-sm">
+                <div className="mb-4 flex gap-4 text-left text-red-700">
                   <Settings2 size={24} className="shrink-0" />
                   <div>
-                    <p className="text-sm font-black uppercase italic leading-none mb-1">Access Blocked</p>
-                    <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter italic">Fixing Steps Below:</p>
+                    <p className="mb-1 text-sm leading-none font-black uppercase italic">Access Blocked</p>
+                    <p className="font-bold tracking-tighter text-[10px] uppercase italic opacity-80">Fixing Steps Below:</p>
                   </div>
                 </div>
 
-                {/* ✅ Option 1: Lock Icon (RE-ADDED ALL 3 LINES) */}
-                <div className="bg-white/60 p-4 rounded-2xl mb-4 border border-red-100/50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase mb-3 italic">Option 1: Quick Fix (Mobile/PC)</p>
+                {/* ✅ Option 1: Lock Icon Mobile Framework */}
+                <div className="mb-4 rounded-2xl border border-red-100/50 bg-white/60 p-4 text-left">
+                  <p className="mb-3 font-black text-[10px] text-slate-400 uppercase italic">Option 1: Quick Fix (Mobile/PC)</p>
                   <div className="space-y-3">
-                    <div className="flex gap-3 items-center text-[11px] font-bold text-slate-700">
-                      <span className="bg-red-200 text-red-700 w-5 h-5 rounded-full flex items-center justify-center text-[9px] shrink-0 font-black italic">1</span>
-                      <p>URL bar mein <span className="text-blue-600 font-black italic underline">Lock (🔒)</span> ko dabayein.</p>
+                    <div className="flex items-center gap-3 font-bold text-[11px] text-slate-700">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-200 font-black text-red-700 text-[9px] italic">1</span>
+                      <p>URL bar mein <span className="font-black text-blue-600 italic underline">Lock (🔒)</span> ko dabayein.</p>
                     </div>
-                    <div className="flex gap-3 items-center text-[11px] font-bold text-slate-700">
-                      <span className="bg-red-200 text-red-700 w-5 h-5 rounded-full flex items-center justify-center text-[9px] shrink-0 font-black italic">2</span>
-                      <p><span className="underline italic">Site Settings</span> {'>'} <span className="underline italic">Permissions</span> mein jayein.</p>
+                    <div className="flex items-center gap-3 font-bold text-[11px] text-slate-700">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-200 font-black text-red-700 text-[9px] italic">2</span>
+                      <p><span className="italic underline">Site Settings</span> {'>'} <span className="italic underline">Permissions</span> mein jayein.</p>
                     </div>
-                    <div className="flex gap-3 items-center text-[11px] font-bold text-slate-700">
-                      <span className="bg-red-200 text-red-700 w-5 h-5 rounded-full flex items-center justify-center text-[9px] shrink-0 font-black italic">3</span>
-                      <p><span className="text-emerald-600 font-black italic underline">Allow</span> Location aur Camera kar dein.</p>
+                    <div className="flex items-center gap-3 font-bold text-[11px] text-slate-700">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-200 font-black text-red-700 text-[9px] italic">3</span>
+                      <p><span className="font-black text-emerald-600 italic underline">Allow</span> Location aur Camera kar dein.</p>
                     </div>
                   </div>
                 </div>
 
-                {/* ✅ Option 2: Manual Link + Usage Guide */}
-                <div className="bg-white/60 p-4 rounded-2xl mb-5 border border-red-100/50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase mb-3 italic">Option 2: Manual Link (Desktop)</p>
+                {/* ✅ Option 2: Clipboard Settings Matrix Link Selector */}
+                <div className="mb-5 rounded-2xl border border-red-100/50 bg-white/60 p-4 text-left">
+                  <p className="mb-3 font-black text-[10px] text-slate-400 uppercase italic">Option 2: Manual Link (Desktop)</p>
                   
                   <div 
                     onClick={copySettingsLink}
-                    className="flex items-center justify-between bg-white border border-slate-200 px-3 py-2 rounded-xl cursor-pointer hover:border-blue-400 transition-all group mb-4 shadow-sm"
+                    className="group mb-4 flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition-all hover:border-blue-400"
                   >
-                     <p className="text-[10px] font-mono font-bold text-slate-400 truncate pr-4 italic tracking-tighter">chrome://settings/content/siteDetails...</p>
-                     <div className="shrink-0 bg-slate-900 text-white p-1.5 rounded-lg group-active:scale-90 transition-transform">
+                     <p className="truncate pr-4 font-mono font-bold tracking-tighter text-[10px] text-slate-400 italic">chrome://settings/content/siteDetails...</p>
+                     <div className="shrink-0 rounded-lg bg-slate-900 p-1.5 text-white transition-transform group-active:scale-90">
                         {copied ? <Check size={12} className="text-emerald-400"/> : <Copy size={12}/>}
                      </div>
                   </div>
 
                   <div className={`space-y-2 transition-all duration-500 ${copied ? 'opacity-100' : 'opacity-40'}`}>
                     <div className="flex items-start gap-2">
-                      <MousePointer2 size={12} className="text-blue-500 mt-0.5" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase leading-tight italic">Link copy karke <span className="text-slate-900 underline">New Tab</span> kholiye.</p>
+                      <MousePointer2 size={12} className="mt-0.5 text-blue-500" />
+                      <p className="leading-tight font-black text-[9px] text-slate-500 uppercase italic">Link copy karke <span className="text-slate-900 underline">New Tab</span> kholiye.</p>
                     </div>
                     <div className="flex items-start gap-2">
-                      <ExternalLink size={12} className="text-blue-500 mt-0.5" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase leading-tight italic tracking-tight">Address bar mein <span className="text-slate-900 underline">Paste</span> karke Enter dabayein.</p>
+                      <ExternalLink size={12} className="mt-0.5 text-blue-500" />
+                      <p className="leading-tight font-black tracking-tight text-[9px] text-slate-500 uppercase italic">Address bar mein <span className="text-slate-900 underline">Paste</span> karke Enter dabayein.</p>
                     </div>
                   </div>
                 </div>
@@ -161,39 +187,44 @@ export default function UltimateHardwareGuard() {
             </div>
           )}
 
+          {/* Portal Core Initialization Trigger Call to Action */}
           <button
             disabled={!allClear}
             onClick={() => window.location.href = '/admin'}
             className={`w-full mt-10 py-6 rounded-[2.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all duration-500 shadow-xl ${
-              allClear ? 'bg-blue-600 text-white scale-100 shadow-blue-200' : 'bg-slate-100 text-slate-300 scale-95 cursor-not-allowed'
+              allClear ? 'bg-blue-600 text-white scale-100 shadow-blue-200 hover:bg-blue-700' : 'bg-slate-100 text-slate-300 scale-95 cursor-not-allowed'
             }`}
           >
             {allClear ? <>Initialize Portal <ArrowRight size={20}/></> : <>Awaiting Access <Zap className="animate-pulse" size={18}/></>}
           </button>
         </div>
 
-        <div className="bg-slate-50 p-5 text-center border-t border-slate-100">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.25em]">Modern Enterprises • Secure Node</p>
+        {/* Global Node Branding Trace Footer */}
+        <div className="border-t border-slate-100 bg-slate-50 p-5 text-center">
+          <p className="font-black tracking-[0.25em] text-[9px] text-slate-400 uppercase">Modern Enterprises • Secure Node</p>
         </div>
       </div>
     </div>
   );
 }
 
+// ==========================================
+// 🛠️ RENDERING ATTACHMENT PERMISSION ROW SUB-COMPONENT
+// ==========================================
 function PermissionRow({ label, status, icon, onAction }: any) {
   const isGranted = status === "granted";
   const isDenied = status === "denied";
   return (
     <div className={`p-1 rounded-[2rem] transition-all duration-500 ${isGranted ? 'bg-emerald-50 shadow-inner border border-emerald-100' : 'bg-slate-100 border border-slate-200'}`}>
-      <div className="flex items-center justify-between p-4 bg-white rounded-[1.8rem] shadow-sm">
-        <div className="flex items-center gap-4 text-slate-700">
+      <div className="flex items-center justify-between rounded-[1.8rem] bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-4 text-left text-slate-700">
           <div className={`p-3 rounded-2xl ${isGranted ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>{icon}</div>
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 tracking-tighter italic">{label}</p>
+            <p className="mb-1 leading-none font-black tracking-tighter tracking-widest text-[9px] text-slate-400 uppercase italic">{label}</p>
             <p className={`text-xs font-[1000] italic tracking-tighter ${isGranted ? 'text-emerald-600' : 'text-slate-700'}`}>{isGranted ? '✓ FULL ACCESS' : isDenied ? '✖ BLOCKED' : 'READY TO AUTH'}</p>
           </div>
         </div>
-        {!isGranted && <button onClick={onAction} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase italic tracking-tighter active:scale-90 transition-all shadow-md">Enable</button>}
+        {!isGranted && <button onClick={onAction} className="rounded-xl bg-slate-900 px-5 py-2 font-black tracking-tighter text-white text-[10px] uppercase italic shadow-md transition-all active:scale-90">Enable</button>}
       </div>
     </div>
   );

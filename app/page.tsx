@@ -1,3 +1,4 @@
+﻿
 "use client";
 // app/page.tsx
 import { useRouter } from "next/navigation";
@@ -6,25 +7,41 @@ export default function Home() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900">
+      <div className="w-full max-w-md rounded-xl bg-white/10 p-8 text-center backdrop-blur-lg">
 
-      <div className="bg-white/10 backdrop-blur-lg p-8 rounded-xl text-center w-80">
+        <h1 className="mb-5 text-2xl font-semibold text-white">CCTV System</h1>
 
-        <h1 className="text-white mb-5 text-xl">CCTV System</h1>
-
-        <button onClick={() => router.push("/admin")}
-          className="w-full bg-yellow-500 p-2 mb-2 rounded">
+        {/* Engineer Button */}
+        <button
+          onClick={() => router.push("/admin")}
+          className="w-full bg-yellow-500 hover:bg-yellow-600 active:scale-95 transition-all p-3 mb-3 rounded font-semibold text-black"
+        >
           🛠 Engineer
         </button>
 
-        <button onClick={() => router.push("/admin")}
-          className="w-full bg-red-500 p-2 mb-2 rounded">
-          👑 Admin
+        {/* Admin Button */}
+        <button
+          onClick={() => router.push("/admin")}
+          className="w-full bg-red-500 hover:bg-red-600 active:scale-95 transition-all p-3 mb-3 rounded font-semibold text-white"
+        >
+          ⚙️ Admin
         </button>
 
-        <button onClick={() => router.push("/permission")}
-          className="w-full bg-red-500 p-2 rounded">
-          👑 permission
+        {/* Permission Button */}
+        <button
+          onClick={() => router.push("/permission")}
+          className="w-full bg-purple-500 hover:bg-purple-600 active:scale-95 transition-all p-3 mb-3 rounded font-semibold text-white"
+        >
+          🔐 Permission
+        </button>
+
+        {/* Signup Button */}
+        <button
+          onClick={() => router.push("/signup")}
+          className="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 transition-all p-3 rounded font-semibold text-white"
+        >
+          👥 Add New User
         </button>
 
       </div>
