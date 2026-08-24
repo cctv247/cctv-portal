@@ -8,7 +8,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-900">
-      <div className="w-full max-w-md rounded-xl bg-white/10 p-8 text-center backdrop-blur-lg">
+      <div className="w-80 max-w-md rounded-xl bg-white/10 p-8 text-center backdrop-blur-lg">
 
         <h1 className="mb-5 text-2xl font-semibold text-white">CCTV System</h1>
 
