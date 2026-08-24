@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // app/signup/page.tsx
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -70,26 +70,26 @@ export default function SignupPage() {
 
   return (
     <AuthGuard allowedRoles={["super_admin"]}>
-      <div className="min-h-screen w-full bg-[#020617] flex flex-col items-center justify-center p-4 sm:p-8 font-sans overflow-y-auto">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center overflow-y-auto bg-[#020617] p-4 font-sans sm:p-8">
         
-        <div className="fixed inset-0 bg-[#020617] -z-10"></div>
-        <div className="w-full max-w-[480px] bg-[#0f172a] rounded-[45px] p-8 sm:p-14 shadow-2xl border border-slate-800 relative my-10">
+        <div className="fixed inset-0 -z-10 bg-[#020617]"></div>
+        <div className="relative w-full max-w-[480px] rounded-[45px] border border-slate-800 bg-[#0f172a] p-8 shadow-2xl sm:p-14">
           
           <button onClick={() => router.push('/admin')} className="mb-8 text-slate-500 hover:text-blue-400 transition-all flex items-center gap-2 group">
             <ArrowLeft size={18} />
-            <span className="text-[10px] font-black uppercase tracking-[3px] italic text-left">Back to Terminal</span>
+            <span className="text-left font-black tracking-[3px] text-[10px] uppercase italic">Back to Terminal</span>
           </button>
 
-          <div className="flex flex-col mb-10 text-left">
+          <div className="mb-10 flex flex-col text-left">
             <div className="flex items-center gap-4">
-              <div className="bg-[#1e293b] p-3 rounded-2xl border border-slate-700">
+              <div className="rounded-2xl border border-slate-700 bg-[#1e293b] p-3">
                 <Users className="text-blue-400" size={26} />
               </div>
               <div>
-                <h1 className="text-[24px] font-[1000] text-white tracking-tighter uppercase italic leading-none">
+                <h1 className="leading-none font-[1000] tracking-tighter text-[24px] text-white uppercase italic">
                   User <span className="text-blue-500">Registry</span>
                 </h1>
-                <p className="text-[8px] font-black text-slate-500 uppercase tracking-[4px] mt-2 italic">Assign System Role</p>
+                <p className="mt-2 font-black tracking-[4px] text-[8px] text-slate-500 uppercase italic">Assign System Role</p>
               </div>
             </div>
           </div>
@@ -98,7 +98,7 @@ export default function SignupPage() {
             
             {/* 🚩 ROLE SELECTION DROPDOWN */}
             <div className="space-y-2">
-              <label className="text-[9px] text-slate-500 font-black uppercase ml-4 tracking-[4px]">Access Level</label>
+              <label className="ml-4 font-black tracking-[4px] text-[9px] text-slate-500 uppercase">Access Level</label>
               <select 
                 value={userType}
                 onChange={(e) => setUserType(e.target.value)}
@@ -110,21 +110,21 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[9px] text-slate-500 font-black uppercase ml-4 tracking-[4px]">Full Identity</label>
+              <label className="ml-4 font-black tracking-[4px] text-[9px] text-slate-500 uppercase">Full Identity</label>
               <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ex: Wazahul Qamar" className="w-full p-4 bg-[#020617] border-2 border-slate-800 rounded-[25px] outline-none text-[14px] font-bold text-white focus:border-blue-500 transition-all" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[9px] text-slate-500 font-black uppercase ml-4 tracking-[4px]">Operator Email</label>
+              <label className="ml-4 font-black tracking-[4px] text-[9px] text-slate-500 uppercase">Operator Email</label>
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="operator@gmail.com" className="w-full p-4 bg-[#020617] border-2 border-slate-800 rounded-[25px] outline-none text-[14px] font-bold text-white focus:border-blue-500 transition-all" />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[9px] text-slate-500 font-black uppercase ml-4 tracking-[4px]">Passkey</label>
+              <label className="ml-4 font-black tracking-[4px] text-[9px] text-slate-500 uppercase">Passkey</label>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full p-4 bg-[#020617] border-2 border-slate-800 rounded-[25px] outline-none text-[14px] font-bold text-white focus:border-blue-500 transition-all" />
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-[1000] py-5 rounded-[30px] flex items-center justify-center gap-4 shadow-2xl active:scale-95 transition-all text-[13px] uppercase tracking-[4px] border-b-[6px] border-blue-900 active:border-b-0 italic">
+            <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-4 rounded-[30px] border-blue-900 border-b-[6px] bg-blue-600 py-5 font-[1000] tracking-[4px] text-white text-[13px] uppercase italic shadow-2xl transition-all hover:bg-blue-500 active:scale-95 active:border-b-0">
               {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck />} 
               <span>{loading ? 'Initializing...' : 'Deploy Operator'}</span>
             </button>
