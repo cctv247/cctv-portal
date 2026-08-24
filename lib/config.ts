@@ -25,7 +25,7 @@ export const COMPANY = {
 
   app: {
     name: "CCTV Portal",
-    version: "v2.1"
+    version: "v2.1.1"
   }
 
 };
