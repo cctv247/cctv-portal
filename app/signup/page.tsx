@@ -70,10 +70,10 @@ export default function SignupPage() {
 
   return (
     <AuthGuard allowedRoles={["super_admin"]}>
-      <div className="flex min-h-screen w-full flex-col items-center justify-center overflow-y-auto bg-[#020617] p-4 font-sans sm:p-8">
+      <div className="flex min-h-screen w-full flex-col items-center justify-start bg-[#020617] p-4 sm:p-8">
         
-        <div className="fixed inset-0 -z-10 bg-[#020617]"></div>
-        <div className="relative w-full max-w-[480px] rounded-[45px] border border-slate-800 bg-[#0f172a] p-8 shadow-2xl sm:p-14">
+        <div className="absolute inset-0 -z-10 bg-[#020617]"></div>
+        <div className="relative mx-auto w-full max-w-[600px] rounded-[30px] border border-slate-800 bg-[#0f172a] p-8 shadow-2xl sm:p-14">
           
           <button onClick={() => router.push('/admin')} className="mb-8 text-slate-500 hover:text-blue-400 transition-all flex items-center gap-2 group">
             <ArrowLeft size={18} />
