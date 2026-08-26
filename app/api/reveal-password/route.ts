@@ -1,5 +1,7 @@
 /* Ye API server par chalegi aur encrypted 
 data lekar saaf password wapas degi */
+// aap/api/reveal-password/route.ts
+
 import { NextResponse } from "next/server";
 import { decryptData } from "@/lib/crypto";
 import { supabaseAdmin } from "@/lib/supabaseClient";

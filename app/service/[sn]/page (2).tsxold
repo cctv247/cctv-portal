@@ -9,7 +9,8 @@ import MasterDialog from '@/lib/components/MasterDialog';
 import { 
   ClipboardCheck, User, Wrench, CheckCircle2, 
   Calendar, Save, Loader2, ArrowLeft,
-  MessageSquare, ShieldCheck, Tag, Edit3, X
+  MessageSquare, ShieldCheck, Tag, Edit3, X,
+  PhoneCall, Clock
 } from 'lucide-react';
 
 export default function ServiceReportPage() {
@@ -20,6 +21,7 @@ export default function ServiceReportPage() {
   const [loading, setLoading] = useState(false);
   const [device, setDevice] = useState<any>(null);
   const [displayName, setDisplayName] = useState<string>(""); 
+  const [isAmcClient, setIsAmcClient] = useState<boolean>(true); // 🔄 AMC Toggle State
   
   // 🛡️ MasterDialog State
   const [dialog, setDialog] = useState({
@@ -27,13 +29,20 @@ export default function ServiceReportPage() {
     onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
   });
 
+  // Default Next AMC Date (+60 Days)
+  const getDefaultNextDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 60);
+    return d.toISOString().split('T')[0];
+  };
+
   const [formData, setFormData] = useState({
     technician_name: '',
     work_done: '',
     service_type: 'Routine Service',
     status: 'Completed ✅',
     remarks: '',
-    next_service_date: ''
+    next_service_date: getDefaultNextDate()
   });
 
   // 🛡️ BLUEPRINT HMODAL: Browser Sync & Environment Setup
@@ -53,13 +62,14 @@ export default function ServiceReportPage() {
         setDisplayName(name);
         setFormData(prev => ({ ...prev, technician_name: name }));
       }
+      
       // Fetching Site Name using device_sn
-      const { data, error } = await supabase.from('devices').select('site_name').eq('device_sn', sn).maybeSingle();
-       if (data) {
-         setDevice(data);
-       } else {
-         console.warn("Device not found for SN:", sn);
-       }
+      const { data, error } = await supabase.from('devices').select('site_name, category').eq('device_sn', sn).maybeSingle();
+      if (data) {
+        setDevice(data);
+      } else {
+        console.warn("Device not found for SN:", sn);
+      }
     };
 
     fetchInitialData();
@@ -70,7 +80,6 @@ export default function ServiceReportPage() {
   }, [sn]);
 
   const handleSaveReport = async () => {
-    // 🚩 Validation with MasterDialog (Professional English)
     if (!formData.technician_name.trim()) {
       setDialog({
         isOpen: true, title: "Auth Required",
@@ -90,26 +99,27 @@ export default function ServiceReportPage() {
 
     setLoading(true);
 
-    // 🟢 Insert into service_logs (Matches your SQL Schema)
+    const finalNextDate = isAmcClient ? (formData.next_service_date || getDefaultNextDate()) : null;
+
+    // 🟢 1. Insert into service_logs table
     const { error: logError } = await supabase.from('service_logs').insert([
       { 
         device_sn: sn, 
-        site_name: device?.site_name, 
+        site_name: device?.site_name || 'Site', 
         technician_name: formData.technician_name,
         work_done: formData.work_done,
         service_type: formData.service_type,
         status: formData.status,
         remarks: formData.remarks,
-        next_service_date: formData.next_service_date || null,
+        next_service_date: finalNextDate, // 🔄 Null if Non-AMC
         created_at: new Date() 
       }
     ]);
 
-    // 🟢 Update devices table for next maintenance tracking
-    if (!logError && formData.next_service_date) {
+    // 🟢 2. Update devices table for next maintenance tracking & last maintenance date
+    if (!logError) {
       await supabase.from('devices').update({ 
-        next_service_date: formData.next_service_date,
-        last_maintenance: new Date() 
+        last_maintenance: new Date().toISOString().split('T')[0]
       }).eq('device_sn', sn); 
     }
 
@@ -139,8 +149,8 @@ export default function ServiceReportPage() {
         className="animate-in slide-in-from-bottom relative flex w-full max-w-xl flex-col overflow-hidden bg-white shadow-2xl duration-700 sm:h-auto sm:max-h-[95vh] sm:rounded-[40px]"
       >
         
-        {/* 🏗️ HMODAL STICKY HEADER (No Line Look) */}
-        <div className="sticky top-0 z-[110] flex shrink-0 items-center justify-between bg-white/95 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-xl">
+        {/* 🏗️ HMODAL STICKY HEADER */}
+        <div className="sticky top-0 z-[110] flex shrink-0 items-center justify-between border-b border-slate-50 bg-white/95 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-xl">
           <div className="flex items-center gap-3 text-left italic">
             <div className="rounded-xl bg-blue-600 p-2.5 text-white shadow-lg shadow-blue-100">
               <ClipboardCheck size={20} />
@@ -196,11 +206,11 @@ export default function ServiceReportPage() {
                 placeholder="Brief technical details of fixed issues..." value={formData.work_done} onChange={(e) => setFormData({...formData, work_done: e.target.value})} />
             </div>
 
-            {/* Grid Row */}
+            {/* Grid Row: Job Type & Status */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="ml-3 font-black text-[9px] text-slate-400 uppercase italic">Job Type</label>
-                <select className="w-full cursor-pointer appearance-none rounded-2xl border-none bg-slate-50 p-3.5 font-black text-slate-600 text-[10px] shadow-sm outline-none"
+                <select className="w-full cursor-pointer appearance-none rounded-2xl border border-slate-200 bg-white p-3.5 font-black text-slate-600 text-[10px] shadow-sm outline-none focus:border-blue-500"
                   value={formData.service_type} onChange={(e)=>setFormData({...formData, service_type: e.target.value})}>
                   <option value="Routine Service">Routine Service</option>
                   <option value="Breakdown">Breakdown</option>
@@ -210,7 +220,7 @@ export default function ServiceReportPage() {
               </div>
               <div className="space-y-1.5">
                 <label className="ml-3 font-black text-[9px] text-slate-400 uppercase italic">Status</label>
-                <select className={`w-full p-3.5 rounded-2xl font-black outline-none text-[10px] shadow-sm appearance-none ${formData.status.includes('✅') ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}
+                <select className={`w-full p-3.5 rounded-2xl font-black outline-none text-[10px] shadow-sm appearance-none border border-slate-200 ${formData.status.includes('✅') ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-orange-50 text-orange-600 border-orange-200'}`}
                   value={formData.status} onChange={(e)=>setFormData({...formData, status: e.target.value})}>
                   <option value="Completed ✅">Completed ✅</option>
                   <option value="Pending ⏳">Pending ⏳</option>
@@ -223,27 +233,76 @@ export default function ServiceReportPage() {
               <label className="ml-3 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
                 <MessageSquare size={12} className="text-blue-500" /> Technical Remarks
               </label>
-              <input className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-xs font-bold text-slate-700 shadow-sm transition-all outline-none focus:border-blue-500" 
-                placeholder="Additional engineer notes..." value={formData.remarks} onChange={(e)=>setFormData({...formData, remarks: e.target.value})} />
+              <input className="w-full rounded-2xl border border-slate-200 bg-white p-3.5 text-xs font-bold text-slate-700 shadow-sm transition-all outline-none focus:border-blue-500" 
+                placeholder="Additional engineer notes (e.g. Camera 2 angle adjusted)..." value={formData.remarks} onChange={(e)=>setFormData({...formData, remarks: e.target.value})} />
             </div>
 
-            {/* Next Visit */}
-            <div className={`p-5 rounded-[30px] border-2 transition-all ${formData.next_service_date ? 'border-emerald-100 bg-emerald-50/30 shadow-inner' : 'border-slate-50 bg-slate-50'}`}>
-              <label className="flex items-center gap-2 leading-none font-black tracking-[2px] text-[10px] text-emerald-700 uppercase italic">
-                <Calendar size={12} /> Schedule Next Visit
-              </label>
-              <input type="date" className="mt-2 w-full cursor-pointer border-none bg-transparent text-base font-black text-emerald-900 outline-none" 
-                onChange={(e)=>setFormData({...formData, next_service_date: e.target.value})} />
+            {/* 🔄 AMC CONTRACT / MAINTENANCE PLAN TOGGLE */}
+            <div className="space-y-4 rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 leading-none font-black tracking-wider text-[10px] text-slate-700 uppercase italic">
+                  <ShieldCheck size={14} className="text-blue-600" /> Maintenance Support Plan
+                </label>
+                <div className="flex rounded-2xl bg-slate-100 p-1">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsAmcClient(true);
+                      if (!formData.next_service_date) setFormData(prev => ({ ...prev, next_service_date: getDefaultNextDate() }));
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all ${isAmcClient ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400'}`}
+                  >
+                    AMC Client
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsAmcClient(false);
+                      setFormData(prev => ({ ...prev, next_service_date: '' }));
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all ${!isAmcClient ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400'}`}
+                  >
+                    Non-AMC
+                  </button>
+                </div>
+              </div>
+
+              {/* Next Schedule Section Based on Plan */}
+              {isAmcClient ? (
+                <div className="animate-in fade-in rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 duration-300">
+                  <label className="flex items-center gap-2 leading-none font-black tracking-[1px] text-[9px] text-emerald-800 uppercase italic">
+                    <Calendar size={12} className="text-emerald-600" /> Next Routine Service Due Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={formData.next_service_date}
+                    className="mt-2 w-full cursor-pointer border-none bg-transparent text-sm font-black text-emerald-900 outline-none" 
+                    onChange={(e)=>setFormData({...formData, next_service_date: e.target.value})} 
+                  />
+                </div>
+              ) : (
+                <div className="animate-in fade-in flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50/50 p-4 duration-300">
+                  <div className="flex items-center gap-2.5">
+                    <PhoneCall size={16} className="text-amber-600" />
+                    <div>
+                      <p className="leading-none font-black text-[10px] text-amber-900 uppercase">On-Call Service Active</p>
+                      <p className="mt-1 leading-none font-bold text-[8px] text-amber-600 uppercase">Slip text: "NON-AMC (ON-CALL SERVICE)"</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-amber-200 px-2.5 py-1 font-black text-[9px] text-amber-900 uppercase">No Contract</span>
+                </div>
+              )}
             </div>
+
           </div>
 
           {/* 🚩 FOOTER ACTION */}
           <div className="relative z-[50] pt-4 pb-20">
             <button 
               onClick={handleSaveReport} disabled={loading}
-              className="flex w-full items-center justify-center gap-3 rounded-[25px] border-black border-b-[6px] bg-slate-900 py-5 text-sm font-black tracking-[4px] text-white uppercase italic shadow-xl transition-all active:scale-95"
+              className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-[25px] border-black border-b-[6px] bg-slate-900 py-5 text-sm font-black tracking-[4px] text-white uppercase italic shadow-xl transition-all active:scale-95 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />} 
+              {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
               Submit Report
             </button>
             <p className="mt-8 text-center leading-none font-[1000] tracking-tighter text-[22px] text-emerald-200 uppercase italic sm:text-[10px]">

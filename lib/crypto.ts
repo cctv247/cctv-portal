@@ -1,4 +1,4 @@
-// app/lib/crypto.ts -
+// app/lib/crypto.ts
 import CryptoJS from 'crypto-js';
 
 // 🚩 Hardcoded Key: Isse mismatch ka khatra khatam

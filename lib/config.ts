@@ -1,4 +1,4 @@
-// lib/config.ts-
+// lib/config.ts
 export const COMPANY = {
   name: "Modern Enterprises",
   contact: "+91 7021330886",
@@ -14,7 +14,7 @@ export const COMPANY = {
     tagline2: "SECURITY SOLUTIONS & INTERIOR DECORATOR",
     footerText: "High-Integrity Security Monitoring",
     copyRightYear: "2026",
-    copyRight: "2026 | MODERN ENTERPRISES"
+    copyRight: "2026 MODERN ENTERPRISES"
   },
 
   links: {

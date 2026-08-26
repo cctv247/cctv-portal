@@ -1,5 +1,5 @@
-"use client";
-
+﻿"use client";
+// app/components/PermissionGate.tsx
 import { useState, useEffect, useCallback } from "react";
 import { 
   ShieldAlert, MapPin, Camera, Settings2, X, 
@@ -92,22 +92,22 @@ export default function PermissionGate() {
       >
         <ShieldAlert size={26} className="shrink-0" />
         <span className="absolute -top-1 -right-1 flex h-4 w-4">
-          <span className="animate-ping absolute h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+          <span className="absolute h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+          <span className="relative h-4 w-4 rounded-full border-2 border-white bg-red-500"></span>
         </span>
       </button>
 
       {/* 🎴 Master Modal Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-[420px] bg-white rounded-[3.5rem] shadow-2xl border border-white p-7 sm:p-8 relative">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-md">
+          <div className="relative w-full max-w-[420px] rounded-[3.5rem] border border-white bg-white p-7 shadow-2xl sm:p-8">
             
-            <div className="flex items-start justify-between mb-8">
+            <div className="mb-8 flex items-start justify-between">
               <div className="flex items-center gap-4">
-                <div className="bg-slate-900 p-3 rounded-2xl text-blue-400 shadow-lg shrink-0">
+                <div className="shrink-0 rounded-2xl bg-slate-900 p-3 text-blue-400 shadow-lg">
                   <Settings2 size={24} />
                 </div>
-                <h2 className="text-2xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-[0.9] border-l-2 border-slate-100 pl-4">
+                <h2 className="border-l-2 border-slate-100 pl-4 text-2xl leading-[0.9] font-[1000] tracking-tighter text-slate-900 uppercase italic">
                   Hardware <br/> <span className="text-blue-600">Auth</span>entication
                 </h2>
               </div>
@@ -116,20 +116,20 @@ export default function PermissionGate() {
               </button>
             </div>
 
-            <div className="space-y-4 mb-8">
+            <div className="mb-8 space-y-4">
               <StatusCard label="LOCATION (GPS)" status={status.location} icon={<MapPin size={20}/>} onEnable={() => handleAction('location')} />
               <StatusCard label="SCANNER (CAMERA)" status={status.camera} icon={<Camera size={20}/>} onEnable={() => handleAction('camera')} />
             </div>
 
             {/* 🛠️ Troubleshooting Section */}
             {(status.location === "denied" || status.camera === "denied") && (
-              <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 shadow-inner">
-                <div className="flex items-center gap-2 mb-4 justify-center">
+              <div className="rounded-[2.5rem] border border-slate-200 bg-slate-50 p-6 shadow-inner">
+                <div className="mb-4 flex items-center justify-center gap-2">
                   {device === 'windows' ? <Monitor size={14}/> : <Smartphone size={14}/>}
-                  <p className="text-[10px] font-black text-slate-500 uppercase italic tracking-widest italic">{device} Solution</p>
+                  <p className="font-black tracking-widest text-[10px] text-slate-500 uppercase italic italic">{device} Solution</p>
                 </div>
                 
-                <div className="space-y-4 mb-6">
+                <div className="mb-6 space-y-4">
                   {device === "ios" ? (
                     <>
                       <Step num="1" text={<>iPhone ki **Settings App** (Main) kholiye.</>} />
@@ -141,10 +141,10 @@ export default function PermissionGate() {
                       <Step num="1" text={<>URL bar mein **Lock (🔒)** par click karke Permission Reset karein.</>} />
                       <Step num="2" text={<>Chrome Settings mein jaakar manually **Allow** karein.</>} />
                       {/* PC Specific Settings Link */}
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 mt-2">
-                        <p className="text-[8px] font-black text-slate-400 uppercase mb-2 italic tracking-tighter">Direct Settings Link (PC)</p>
-                        <button onClick={copySettingsLink} className="w-full flex items-center justify-between bg-slate-50 p-2 rounded-lg hover:border-blue-300 border border-transparent transition-all">
-                          <span className="text-[9px] font-mono text-blue-600 truncate mr-2 italic">chrome://settings/content/siteDetails...</span>
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-white p-3">
+                        <p className="mb-2 font-black tracking-tighter text-[8px] text-slate-400 uppercase italic">Direct Settings Link (PC)</p>
+                        <button onClick={copySettingsLink} className="flex w-full items-center justify-between rounded-lg border border-transparent bg-slate-50 p-2 transition-all hover:border-blue-300">
+                          <span className="mr-2 truncate font-mono text-[9px] text-blue-600 italic">chrome://settings/content/siteDetails...</span>
                           {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} className="text-slate-400" />}
                         </button>
                       </div>
@@ -186,8 +186,8 @@ export default function PermissionGate() {
 
 function Step({ num, text }: any) {
   return (
-    <div className="flex gap-3 items-start text-[11px] font-bold text-slate-700 leading-tight">
-      <span className="bg-red-200 text-red-700 w-5 h-5 rounded-lg flex items-center justify-center text-[9px] shrink-0 font-[1000] italic shadow-sm">{num}</span>
+    <div className="flex items-start gap-3 leading-tight font-bold text-[11px] text-slate-700">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-red-200 font-[1000] text-red-700 text-[9px] italic shadow-sm">{num}</span>
       <p className="tracking-tight italic">{text}</p>
     </div>
   );
@@ -198,15 +198,15 @@ function StatusCard({ label, status, icon, onEnable }: any) {
   const isDenied = status === "denied";
   return (
     <div className={`p-1 rounded-[2.5rem] transition-all duration-500 ${isGranted ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-100 border border-slate-200 shadow-inner'}`}>
-      <div className="flex items-center justify-between p-4 bg-white rounded-[2.3rem] shadow-sm relative overflow-hidden group">
-        <div className="flex items-center gap-4 relative">
+      <div className="group relative flex items-center justify-between overflow-hidden rounded-[2.3rem] bg-white p-4 shadow-sm">
+        <div className="relative flex items-center gap-4">
           <div className={`p-3 rounded-2xl transition-all ${isGranted ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-50' : 'bg-slate-100 text-slate-400'}`}>{icon}</div>
           <div className="text-left">
-            <p className="text-[9px] font-[1000] text-slate-400 uppercase leading-none mb-1 italic tracking-widest">{label}</p>
+            <p className="mb-1 leading-none font-[1000] tracking-widest text-[9px] text-slate-400 uppercase italic">{label}</p>
             <p className={`text-xs font-[1000] italic uppercase tracking-tighter ${isGranted ? 'text-emerald-600' : 'text-slate-700'}`}>{isGranted ? '✓ Verified' : isDenied ? '✕ Restricted' : 'Pending'}</p>
           </div>
         </div>
-        {!isGranted && <button onClick={onEnable} className="bg-[#111827] text-white px-5 py-2.5 rounded-2xl text-[10px] font-[1000] uppercase italic tracking-widest active:scale-90 transition-all shadow-md">Enable</button>}
+        {!isGranted && <button onClick={onEnable} className="rounded-2xl bg-[#111827] px-5 py-2.5 font-[1000] tracking-widest text-white text-[10px] uppercase italic shadow-md transition-all active:scale-90">Enable</button>}
       </div>
     </div>
   );

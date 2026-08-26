@@ -1,5 +1,5 @@
 ﻿"use client";
-
+// app/permission/page.tsx
 import { useState, useEffect, useCallback } from "react";
 import { 
   ShieldCheck, MapPin, Camera, AlertOctagon, 

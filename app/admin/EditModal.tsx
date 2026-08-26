@@ -1,20 +1,21 @@
-"use client";
-// app/Admin/EditModal.tsx_
+﻿"use client";
+// app/admin/EditModal.tsx
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { COMPANY } from "@/lib/config";
 import { 
   X, Save, ShieldCheck, MapPin, Info, 
-  Eye, EyeOff, Navigation, Loader2, Cpu, Hash, Layers, Target, KeyRound, Globe, Settings
+  Eye, EyeOff, Navigation, Loader2, Cpu, Hash, Layers, Target, KeyRound, Globe, Settings,
+  Camera, HardDrive, Zap
 } from "lucide-react";
 
 // 🚩 Zaroori: Map ko dynamic import karein taaki 'window is not defined' error na aaye
 const MapPicker = dynamic(() => import("@/lib/components/MapPicker"), { 
   ssr: false,
   loading: () => (
-    <div className="h-[300px] w-full bg-slate-50 animate-pulse rounded-[35px] flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-200">
+    <div className="flex h-[300px] w-full animate-pulse flex-col items-center justify-center gap-3 rounded-[35px] border-2 border-dashed border-slate-200 bg-slate-50">
       <Loader2 className="animate-spin text-blue-500" size={30} />
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Waking up Satellites...</p>
+      <p className="font-black tracking-widest text-[10px] text-slate-400 uppercase">Waking up Satellites...</p>
     </div>
   )
 });
@@ -24,6 +25,11 @@ interface DeviceData {
   ip_address: string; user_name: string; user_pass: string; admin_name: string;
   admin_pass: string; v_code: string; latitude: string | number;
   longitude: string | number; radius: string | number; device_notes: string;
+  // 🆕 Hardware Metrics
+  camera_count?: number;
+  device_count?: number;
+  power_count?: number;
+  is_reseller?: boolean;
   [key: string]: any;
 }
 
@@ -68,10 +74,9 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
         const newLat = pos.coords.latitude.toFixed(8);
         const newLng = pos.coords.longitude.toFixed(8);
         
-        // Pin aur Input dono ko sync karne ke liye direct setDevice
         setDevice({ 
           ...device, 
-          latitude: newLat,
+          latitude: newLat, 
           longitude: newLng 
         });
         setIsLocating(false);
@@ -82,47 +87,47 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
   };
 
   return (
-    <div className="fixed inset-0 z-[999] bg-slate-900/60 backdrop-blur-md flex items-stretch sm:items-center justify-center p-0 animate-in fade-in duration-300">
+    <div className="animate-in fade-in fixed inset-0 z-[999] flex items-stretch justify-center bg-slate-900/60 p-0 backdrop-blur-md duration-300 sm:items-center">
       
       <div 
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
-        className="bg-[#fcfdfe] w-full max-w-xl sm:h-auto sm:max-h-[95vh] sm:rounded-[45px] shadow-2xl flex flex-col overflow-hidden relative animate-in slide-in-from-bottom duration-500" >
+        className="animate-in slide-in-from-bottom relative flex w-full max-w-xl flex-col overflow-hidden bg-[#fcfdfe] shadow-2xl duration-500 sm:h-auto sm:max-h-[95vh] sm:rounded-[45px]" >
         
         {/* 🏗️ STICKY HEADER */}
-        <div className="sticky top-0 z-[110] bg-white/95 backdrop-blur-xl p-6 flex justify-between items-center shrink-0 pt-[calc(env(safe-area-inset-top)+1rem)] border-b border-slate-50">
-          <div className="flex items-center gap-3 italic text-left">
-            <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg">
+        <div className="sticky top-0 z-[110] flex shrink-0 items-center justify-between border-b border-slate-50 bg-white/95 p-6 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-xl">
+          <div className="flex items-center gap-3 text-left italic">
+            <div className="rounded-xl bg-blue-600 p-2.5 text-white shadow-lg">
               <Cpu size={20} />
             </div>
             <div>
-              <h3 className="text-lg font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none">Edit Device Details</h3>
-              <p className="text-[9px] font-black text-blue-500 uppercase tracking-[3px] mt-1 italic leading-none">{COMPANY?.name || "Modern Enterprises"}</p>
+              <h3 className="text-lg leading-none font-[1000] tracking-tighter text-slate-900 uppercase italic">Edit Device Details</h3>
+              <p className="mt-1 leading-none font-black tracking-[3px] text-[9px] text-blue-500 uppercase italic">{COMPANY?.name || "Modern Enterprises"}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2.5 bg-slate-100 rounded-xl text-slate-400 active:scale-90 transition-all border border-slate-200/50">
+          <button onClick={onClose} className="rounded-xl border border-slate-200/50 bg-slate-100 p-2.5 text-slate-400 transition-all active:scale-90">
             <X size={20} strokeWidth={3} />
           </button>
         </div>
 
         {/* 📝 SCROLLABLE BODY */}
-        <div className="flex-1 overflow-y-auto px-6 sm:px-10 space-y-8 pt-6 pb-44 text-left overscroll-contain custom-scroll bg-[#fcfdfe]">
+        <div className="custom-scroll flex-1 space-y-8 overflow-y-auto overscroll-contain bg-[#fcfdfe] px-6 pt-6 pb-44 text-left sm:px-10">
           
           {/* Identity Identifier */}
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2">
+            <label className="ml-4 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
               <Hash size={12} className="text-blue-500" /> Device SN
             </label>
-            <div className="p-4 bg-slate-50 border-2 border-slate-100 border-dashed rounded-[22px] font-mono font-black text-slate-500 text-[11px] text-left shadow-inner italic break-all select-all">
+            <div className="rounded-[22px] border-2 border-dashed border-slate-100 bg-slate-50 p-4 text-left font-mono font-black break-all text-slate-500 text-[11px] italic shadow-inner select-all">
               {device.device_sn}
             </div>
           </div>
 
           {/* Form Fields Grid: Model & IP Included */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <InputField label="Site Name" icon="🏢" value={device.site_name} onChange={(v:any) => handleChange('site_name', v)} />
             
             <div className="space-y-1.5 text-left">
-              <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2">
+              <label className="ml-4 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
                 <Layers size={12} className="text-blue-500"/> Category
               </label>
               <select 
@@ -141,10 +146,75 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             <InputField label="Network IP" icon={<Globe size={16} />} value={device.ip_address} onChange={(v:any) => handleChange('ip_address', v)} />
           </div>
 
+          {/* 🆕 HARDWARE TRACKING METRICS BLOCK */}
+          <div className="space-y-4 rounded-[40px] border border-slate-100 bg-white p-6 shadow-xl">
+            <p className="flex items-center gap-2 font-black tracking-widest text-[10px] text-blue-600 uppercase italic">
+              <HardDrive size={16} className="text-blue-500"/> Hardware Inventory Metrics
+            </p>
+            
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5 text-left">
+                <label className="ml-2 flex items-center gap-1 font-black text-[8px] text-slate-400 uppercase">
+                  <Camera size={11} className="text-emerald-500"/> Cameras
+                </label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={device.camera_count ?? 0} 
+                  onChange={(e) => handleChange('camera_count', Number(e.target.value))}
+                  className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-center font-black text-slate-800 text-sm outline-none focus:border-blue-400 shadow-inner"
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className="ml-2 flex items-center gap-1 font-black text-[8px] text-slate-400 uppercase">
+                  <HardDrive size={11} className="text-blue-500"/> Recorders
+                </label>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={device.device_count ?? 1} 
+                  onChange={(e) => handleChange('device_count', Number(e.target.value))}
+                  className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-center font-black text-slate-800 text-sm outline-none focus:border-blue-400 shadow-inner"
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className="ml-2 flex items-center gap-1 font-black text-[8px] text-slate-400 uppercase">
+                  <Zap size={11} className="text-amber-500"/> Power Supply
+                </label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={device.power_count ?? 1} 
+                  onChange={(e) => handleChange('power_count', Number(e.target.value))}
+                  className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-center font-black text-slate-800 text-sm outline-none focus:border-blue-400 shadow-inner"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3.5 pt-2">
+              <span className="flex items-center gap-2 font-black text-[10px] text-slate-700 uppercase italic">
+                <ShieldCheck size={16} className="text-purple-600" /> Reseller Maintenance Contract
+              </span>
+              <button 
+                type="button"
+                onClick={() => handleChange('is_reseller', device.is_reseller === false ? true : false)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm ${
+                  device.is_reseller !== false 
+                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                    : 'bg-white text-slate-400 border border-slate-200'
+                }`}
+              >
+                {device.is_reseller !== false ? "Yes (Active)" : "No (Direct)"}
+              </button>
+            </div>
+          </div>
+
           {/* 🔐 SECURITY VAULT (Full Credentials) */}
-          <div className="bg-white p-5 rounded-[40px] border border-slate-100 shadow-xl space-y-5">
-            <div className="flex justify-between items-center px-1">
-              <span className="text-[10px] font-[1000] text-blue-600 uppercase tracking-widest italic flex items-center gap-2">
+          <div className="space-y-5 rounded-[40px] border border-slate-100 bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between px-1">
+              <span className="flex items-center gap-2 font-[1000] tracking-widest text-[10px] text-blue-600 uppercase italic">
                 <ShieldCheck size={18}/> Access Credentials
               </span>
               <button onClick={() => setShowPass(!showPass)} className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all border border-blue-100">
@@ -162,21 +232,21 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
           </div>
 
           {/* 📍 GPS & SATELLITE SECTION (Interactive Map) */}
-          <div className="bg-white p-2 rounded-[40px] border border-slate-100 shadow-xl space-y-5 relative overflow-hidden">
-            <div className="flex justify-between items-center mb-1">
+          <div className="relative space-y-5 overflow-hidden rounded-[40px] border border-slate-100 bg-white p-2 shadow-xl">
+            <div className="mb-1 flex items-center justify-between">
               <div className="flex flex-col text-left">
-                <span className="text-[11px] font-[1000] text-red-600 uppercase tracking-[2px] italic flex items-center gap-2">
+                <span className="flex items-center gap-2 font-[1000] tracking-[2px] text-[11px] text-red-600 uppercase italic">
                   <MapPin size={18} /> Satellite Geo-Tagging
                 </span>
-                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest ml-7">20x High-Detail Zoom</span>
+                <span className="ml-7 font-black tracking-widest text-[8px] text-slate-300 uppercase">20x High-Detail Zoom</span>
               </div>
               <button 
                 onClick={handleGetLocation} 
                 disabled={isLocating} 
-                className="bg-slate-900 text-white px-5 py-3 rounded-2xl active:scale-95 shadow-2xl flex items-center gap-2 transition-all group border-b-4 border-black disabled:opacity-50"
+                className="group flex items-center gap-2 rounded-2xl border-b-4 border-black bg-slate-900 px-5 py-3 text-white shadow-2xl transition-all active:scale-95 disabled:opacity-50"
               >
                 {isLocating ? <Loader2 size={14} className="animate-spin" /> : <Navigation size={14} />}
-                <span className="text-[10px] font-black uppercase italic tracking-widest">Update GPS</span>
+                <span className="font-black tracking-widest text-[10px] uppercase italic">Update GPS</span>
               </button>
             </div>
 
@@ -196,7 +266,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             </div>
 
             <div className="space-y-2 text-left">
-              <label className="text-[9px] font-black text-slate-400 ml-4 italic uppercase flex items-center gap-2">
+              <label className="ml-4 flex items-center gap-2 font-black text-[9px] text-slate-400 uppercase italic">
                 <Target size={12} className="text-blue-500" /> Geofence Radius (Meters)
               </label>
               <div className="relative">
@@ -206,14 +276,14 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
                   onChange={e => handleChange('radius', e.target.value)} 
                   className="w-full p-4 bg-blue-50/30 border border-blue-100 rounded-2xl font-black text-[13px] text-blue-900 outline-none pl-12 shadow-inner" 
                 />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-blue-300 text-xs italic">M</div>
+                <div className="absolute top-1/2 left-4 -translate-y-1/2 text-xs font-black text-blue-300 italic">M</div>
               </div>
             </div>
           </div>
 
           {/* Remarks Section */}
-          <div className="space-y-2 text-left pb-10">
-            <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2">
+          <div className="space-y-2 pb-10 text-left">
+            <label className="ml-4 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
               <Info size={14} className="text-slate-300" /> Technical Remarks
             </label>
             <textarea 
@@ -228,21 +298,21 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             <button 
               onClick={(e) => { e.preventDefault(); onUpdate(); }} 
               disabled={isSaving}
-              className="w-full bg-blue-600 text-white py-5 rounded-[30px] font-[1000] uppercase text-[15px] tracking-[4px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all border-b-[6px] border-blue-900 italic"
+              className="w-full bg-blue-600 text-white py-5 rounded-[30px] font-[1000] uppercase text-[15px] tracking-[4px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all border-b-[6px] border-blue-900 italic cursor-pointer"
             >
               {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} 
               {isSaving ? "SYNCING CLOUD..." : "Update Device"}
             </button>
-            <p className="text-[22px] text-center mt-8 sm:text-[10px] font-[1000] text-emerald-200 tracking-tighter uppercase italic leading-none">
-             <span>
-              {(COMPANY?.app?.name || "Cctv Portal").split(' ')[0]}
-             </span>
-             <span className="text-blue-200 italic ml-1.5">
-              {(COMPANY?.app?.name || "Cctv Portal").split(' ')[1] || ""}
-             </span>
-             <span className="text-blue-300/50 italic text-[14px] sm:text-[8px] ml-3 tracking-[2px] font-black">
-              {COMPANY?.app?.version || "v2.0"}
-             </span>
+            <p className="mt-8 text-center leading-none font-[1000] tracking-tighter text-[22px] text-emerald-200 uppercase italic sm:text-[10px]">
+              <span>
+                {(COMPANY?.app?.name || "Cctv Portal").split(' ')[0]}
+              </span>
+              <span className="ml-1.5 text-blue-200 italic">
+                {(COMPANY?.app?.name || "Cctv Portal").split(' ')[1] || ""}
+              </span>
+              <span className="ml-3 font-black tracking-[2px] text-blue-300/50 text-[14px] italic sm:text-[8px]">
+                {COMPANY?.app?.version || "v2.0"}
+              </span>
             </p>
           </div>
 
@@ -256,7 +326,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
 function InputField({ label, icon, value, onChange, type = "text", light = false }: any) {
   return (
     <div className="space-y-1.5 text-left">
-      <label className="text-[9px] font-black uppercase text-slate-400 ml-4 tracking-widest italic flex items-center gap-2">
+      <label className="ml-4 flex items-center gap-2 font-black tracking-widest text-[9px] text-slate-400 uppercase italic">
         <span className="text-base opacity-70">{icon}</span> {label}
       </label>
       <input 

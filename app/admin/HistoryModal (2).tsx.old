@@ -51,6 +51,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
   const fetchData = async () => {
     setLoading(true);
     try {
+      // 1. Fetch Service Logs
       const { data: logData, error: logError } = await supabase
         .from("service_logs")
         .select("*")
@@ -101,76 +102,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
     });
   };
 
-  // 🔤 CLEAN BULLET RENDERER WITH OPTIMIZED LINE SPACING (Scale 0.16)
-  const renderUnicodeBulletTextToImage = (text: string, fontSize = 26, color = "#0f172a", maxCanvasWidth = 1000): { img: string; width: number; height: number } => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return { img: "", width: 0, height: 0 };
-
-    ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", "Mangal", sans-serif`;
-
-    const rawItems = text
-      .split(/\r?\n+/)
-      .map(item => item.replace(/^[•\-\*]\s*/, '').trim())
-      .filter(item => item.length > 0);
-
-    const formattedLines: { text: string; isBullet: boolean }[] = [];
-    const textIndentWidth = 45;
-    const availableTextWidth = maxCanvasWidth - textIndentWidth;
-
-    rawItems.forEach((item) => {
-      const words = item.split(" ");
-      let currentLine = "";
-      let isFirst = true;
-
-      words.forEach((w) => {
-        const testLine = currentLine ? `${currentLine} ${w}` : w;
-        if (ctx.measureText(testLine).width > availableTextWidth && currentLine) {
-          formattedLines.push({ text: currentLine, isBullet: isFirst });
-          currentLine = w;
-          isFirst = false;
-        } else {
-          currentLine = testLine;
-        }
-      });
-
-      if (currentLine) {
-        formattedLines.push({ text: currentLine, isBullet: isFirst });
-      }
-    });
-
-    const lineHeight = fontSize * 1.8;
-    const totalHeight = Math.max(formattedLines.length * lineHeight + 20, fontSize + 20);
-
-    canvas.width = maxCanvasWidth;
-    canvas.height = totalHeight;
-
-    ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", "Mangal", sans-serif`;
-    ctx.textBaseline = "top";
-
-    formattedLines.forEach((lineObj, idx) => {
-      const y = idx * lineHeight + 8;
-      if (lineObj.isBullet) {
-        ctx.fillStyle = "#002b49";
-        ctx.beginPath();
-        ctx.arc(18, y + (fontSize * 0.45), fontSize * 0.17, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = color;
-        ctx.fillText(lineObj.text, textIndentWidth, y);
-      } else {
-        ctx.fillStyle = color;
-        ctx.fillText(lineObj.text, textIndentWidth, y);
-      }
-    });
-
-    return {
-      img: canvas.toDataURL("image/png"),
-      width: maxCanvasWidth,
-      height: totalHeight
-    };
-  };
-
+  // 📄 TOP HEADER BRANDING ENGINE (SECURITY SERVICES)
   const applyBranding = async (doc: jsPDF) => {
     try {
       const imgData = await getBase64ImageFromURL("/logo.ico");
@@ -182,16 +114,17 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
         doc.setTextColor(245, 158, 11).setFontSize(9).setFont("helvetica", "bold").text("me.", 17.5, 17.5);
       }
     } catch {
-      // Fallback
+      // Safe fallback
     }
 
     doc.setTextColor(0, 43, 73).setFontSize(14).setFont("helvetica", "bold").text(COMPANY?.name?.toUpperCase() || "MODERN ENTERPRISES", 31, 13);
     
+    // 🛡️ Dedicated Security Systems Branding
     doc.setFontSize(6.5).setFont("helvetica", "bold").setTextColor(100, 116, 139);
     doc.text("DIGITAL SURVEILLANCE  •  CCTV  •  ACCESS CONTROL  •  SECURITY SOLUTIONS", 31, 18);
 
     doc.setFontSize(6.5).setFont("helvetica", "bold").setTextColor(15, 23, 42);
-    doc.text(`${COMPANY?.contact || "+91 7021330886"}   |   ${COMPANY?.supportEmail || "me.cctv247@gmail.com"}`, 31, 24);
+    doc.text(`${COMPANY?.contact || "+91 7021330886"}   |   ${COMPANY?.supportEmail || "me.ce407@gmail.com"}`, 31, 24);
 
     const pageWidth = doc.internal.pageSize.width;
     doc.setFillColor(0, 43, 73);
@@ -240,9 +173,8 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
           const pageHeight = doc.internal.pageSize.height;
           doc.setFillColor(0, 43, 73);
           doc.rect(0, pageHeight - 8, pageWidth, 8, 'F');
-          doc.setTextColor(255, 255, 255).setFontSize(7).setFont("helvetica", "bold");
-          
-          doc.text(`© ${COMPANY?.branding?.copyRight || "2026 | MODERN ENTERPRISES"} | DIGITAL MAINTENANCE SYSTEM`, pageWidth / 2, pageHeight - 3, { align: "center" });
+          doc.setTextColor(255, 255, 255).setFontSize(6).setFont("helvetica", "bold");
+          doc.text(`© 2026 MODERN ENTERPRISES | DIGITAL MAINTENANCE SYSTEM`, pageWidth / 2, pageHeight - 3, { align: "center" });
         }
       });
       doc.save(`Logs_${siteName}.pdf`);
@@ -277,10 +209,14 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
         didParseCell: (data) => {
           if (data.row.index === 3 && data.column.index === 1) {
             const val = data.cell.raw?.toString().toUpperCase();
+            (data.cell.styles as any).charSpace = 1.5; 
+
             if (val?.includes("COMPLETED") || val?.includes("DONE")) {
               data.cell.styles.textColor = [16, 185, 129]; 
+              data.cell.styles.fontStyle = 'bold';
             } else if (val?.includes("PENDING")) {
               data.cell.styles.textColor = [249, 115, 22]; 
+              data.cell.styles.fontStyle = 'bold';
             }
           }
         },
@@ -292,6 +228,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
             const ix = data.cell.x + 3.5;
             const iy = data.cell.y + (data.cell.height / 2) - 2.5;
 
+            // Icon 0: Location Pin Icon (SITE NAME)
             if (data.row.index === 0) {
               doc.setFillColor(255, 255, 255);
               doc.circle(ix + 2.2, iy + 1.8, 1.8, 'F');
@@ -299,16 +236,19 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
               doc.setFillColor(0, 43, 73);
               doc.circle(ix + 2.2, iy + 1.8, 0.7, 'F');
             }
+            // Icon 1: Person / User Icon (ENGINEER)
             if (data.row.index === 1) {
               doc.setFillColor(255, 255, 255);
               doc.circle(ix + 2.2, iy + 1.4, 1.3, 'F');
               doc.roundedRect(ix + 0.5, iy + 3.1, 3.4, 2, 0.8, 0.8, 'F');
             }
+            // Icon 2: Wrench / Tool Icon (JOB TYPE)
             if (data.row.index === 2) {
               doc.setDrawColor(255, 255, 255).setLineWidth(0.65);
               doc.line(ix + 0.8, iy + 4.2, ix + 3.6, iy + 1.2);
               doc.circle(ix + 3.5, iy + 1.3, 1, 'S');
             }
+            // Icon 3: Checkmark Capsule Icon (STATUS)
             if (data.row.index === 3) {
               doc.setDrawColor(255, 255, 255).setLineWidth(0.4).setFillColor(0, 43, 73);
               doc.roundedRect(ix + 0.2, iy + 0.8, 4.4, 3.4, 1.7, 1.7, 'S');
@@ -326,15 +266,11 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
 
       const card1Bottom = (doc as any).lastAutoTable.finalY || 80;
 
-      // 🌟 Card 2: REMARKS (Scale 0.16 with comfortable padding)
+      // Card 2: Remarks Box
       const remarksStartY = card1Bottom + 7;
-      const remarksText = log.remarks || "All systems operating normally.";
-
-      const renderedRemarks = renderUnicodeBulletTextToImage(remarksText, 26, "#0f172a", 1000);
-      const scaleFactor = 0.16;
-      const imgPdfW = renderedRemarks.width * scaleFactor;
-      const imgPdfH = renderedRemarks.height * scaleFactor;
-      const cardHeight = Math.max(24, imgPdfH + 12);
+      const remarksText = log.remarks || "CCTV camera aur DVR sab bether tareeke se chal raha hai.\nMazjide Aksha ka 1st floor, second PV switch kharab tha.\nUse change kiya gaya.";
+      const remarkLines = remarksText.split('\n').filter((l: string) => l.trim().length > 0);
+      const cardHeight = Math.max(26, 12 + (remarkLines.length * 7.5));
 
       doc.setFillColor(255, 255, 255);
       doc.setDrawColor(203, 213, 225).setLineWidth(0.4);
@@ -344,45 +280,46 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       doc.roundedRect(14, remarksStartY - 3, 33, 7.5, 1.5, 1.5, 'F');
       doc.setTextColor(255, 255, 255).setFontSize(7.5).setFont("helvetica", "bold").text("REMARKS", 30.5, remarksStartY + 2.2, { align: "center" });
 
-      if (renderedRemarks.img) {
-        doc.addImage(renderedRemarks.img, "PNG", 18, remarksStartY + 6, Math.min(174, imgPdfW), imgPdfH);
-      }
+      let textPosY = remarksStartY + 10;
+      doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(15, 23, 42);
+
+      remarkLines.forEach((line: string) => {
+        doc.setFillColor(0, 43, 73);
+        doc.circle(22, textPosY - 1, 0.9, 'F');
+        const splitText = doc.splitTextToSize(line.trim(), 165);
+        doc.text(splitText, 26, textPosY);
+        textPosY += (splitText.length * 5) + 2.5;
+      });
 
       const card2Bottom = remarksStartY + cardHeight;
 
-      // 🌟 Card 3: WORK DESCRIPTION (Scale 0.16 & Perfect Line Alignment Fix)
+      // Card 3: Work Description, Date & Next Schedule
       const nextScheduleFormatted = log.next_service_date 
         ? new Date(log.next_service_date).toLocaleDateString('en-GB') 
         : "NON-AMC (ON-CALL SERVICE)";
 
       const createdDateFormatted = new Date(log.created_at || Date.now()).toLocaleDateString('en-GB');
-      const workDoneText = log.work_done || "Routine inspection carried out; no service required.";
-
-      const renderedWork = renderUnicodeBulletTextToImage(workDoneText, 26, "#0f172a", 1000);
-      const workScaleFactor = 0.16;
-      const wImgW = renderedWork.width * workScaleFactor;
-      const wImgH = renderedWork.height * workScaleFactor;
 
       autoTable(doc, {
         startY: card2Bottom + 6,
         body: [
-          ["       WORK DESCRIPTION", ""],
-          ["       DATE", createdDateFormatted],
-          ["       NEXT SCHEDULE", nextScheduleFormatted]
+          ["          WORK DESCRIPTION", log.work_done || "Routine inspection carried out; no service required."],
+          ["          DATE", createdDateFormatted],
+          ["          NEXT SCHEDULE", nextScheduleFormatted]
         ],
         theme: 'plain',
-        styles: { fontSize: 8.5, cellPadding: 5, font: "helvetica" },
+        styles: { fontSize: 8.5, cellPadding: 4, font: "helvetica" },
         columnStyles: {
           0: { fillColor: [255, 255, 255], textColor: [0, 43, 73], fontStyle: 'bold', cellWidth: 54 },
           1: { fillColor: [255, 255, 255], textColor: [15, 23, 42], fontStyle: 'normal' }
         },
         didParseCell: (data) => {
-          if (data.row.index === 0 && data.column.index === 1) {
-            data.cell.styles.minCellHeight = Math.max(16, wImgH + 8);
-          }
           if (data.row.index === 2 && data.column.index === 1) {
             if (!log.next_service_date) {
               data.cell.styles.textColor = [180, 83, 9]; 
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = [15, 23, 42];
             }
           }
         },
@@ -390,45 +327,34 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
           doc.setDrawColor(226, 232, 240).setLineWidth(0.3);
           doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
 
-          // 🛠️ PERFECT LINE ALIGNMENT FIX FOR ALL ROWS
           if (data.column.index === 0) {
             const ix = data.cell.x + 3.5;
-            // Cell ke vertical center par icon ko lock kar diya hai taaki label ke sath bilkul line mein rahe
             const iy = data.cell.y + (data.cell.height / 2) - 2.5;
 
-            // WORK DESCRIPTION
+            // Icon 0: Wrench / Spanner Icon (WORK DESCRIPTION)
             if (data.row.index === 0) {
               doc.setFillColor(0, 43, 73);
               doc.circle(ix + 2.3, iy + 2.3, 2.3, 'F');
-              doc.setDrawColor(255, 255, 255)
-                .setLineWidth(0.5);
-              doc.line(ix + 1.0, iy + 3.5, ix + 3.5, iy + 1.0);
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.5);
+              doc.line(ix + 1, iy + 3.5, ix + 3.5, iy + 1);
             }
-
-            // DATE
+            // Icon 1: Calendar Grid Icon (DATE)
             if (data.row.index === 1) {
               doc.setFillColor(0, 43, 73);
               doc.circle(ix + 2.3, iy + 2.3, 2.3, 'F');
-              doc.setDrawColor(255, 255, 255)
-                .setLineWidth(0.3);
-              doc.rect(ix + 1, iy + 1, 2.6, 2.6,'S');
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.3);
+              doc.rect(ix + 1, iy + 1, 2.6, 2.6, 'S');
               doc.line(ix + 1, iy + 1.8, ix + 3.6, iy + 1.8);
             }
-
-            // NEXT SCHEDULE
+            // Icon 2: Clock / Schedule Icon (NEXT SCHEDULE)
             if (data.row.index === 2) {
               doc.setFillColor(0, 43, 73);
               doc.circle(ix + 2.3, iy + 2.3, 2.3, 'F');
-              doc.setDrawColor(255, 255, 255)
-                .setLineWidth(0.35);
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.35);
               doc.circle(ix + 2.3, iy + 2.3, 1.4, 'S');
               doc.line(ix + 2.3, iy + 1.5, ix + 2.3, iy + 2.3);
               doc.line(ix + 2.3, iy + 2.3, ix + 3, iy + 2.3);
             }
-          }
-
-          if (data.row.index === 0 && data.column.index === 1 && renderedWork.img) {
-            doc.addImage(renderedWork.img, "PNG", data.cell.x + 2, data.cell.y + 4, Math.min(124, wImgW), wImgH);
           }
         },
         didDrawPage: (data) => {
@@ -454,6 +380,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       const rawCategory = deviceDetails?.category?.toUpperCase() || "DVR/NVR";
       const displayCategory = rawCategory.length > 10 ? rawCategory.slice(0, 9) : rawCategory;
 
+      // 1. Camera Icon (TOTAL CAMERAS)
       const c1x = 17;
       doc.setFillColor(0, 43, 73);
       doc.roundedRect(c1x, metricsStartY + 5, 5, 3.2, 0.4, 0.4, 'F');
@@ -462,6 +389,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("TOTAL CAMERAS", c1x + 8.5, metricsStartY + 7);
       doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(0, 43, 73).text(String(totalCameras), c1x + 8.5, metricsStartY + 16);
 
+      // 2. Server / Storage Rack Icon (DVR / NVR)
       const c2x = 56;
       doc.setDrawColor(0, 43, 73).setLineWidth(0.35).setFillColor(255, 255, 255);
       doc.roundedRect(c2x, metricsStartY + 4.2, 5.8, 2.2, 0.4, 0.4, 'FD');
@@ -472,6 +400,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text(displayCategory, c2x + 8.5, metricsStartY + 7);
       doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(0, 43, 73).text(String(totalDevices), c2x + 8.5, metricsStartY + 16);
 
+      // 3. Plug / Power Icon (FED/POWER)
       const c3x = 97;
       doc.setFillColor(0, 43, 73);
       doc.roundedRect(c3x, metricsStartY + 5.2, 4.4, 3.2, 0.5, 0.5, 'F');
@@ -482,6 +411,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("FED/POWER", c3x + 7.5, metricsStartY + 7);
       doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(0, 43, 73).text(String(totalPower), c3x + 7.5, metricsStartY + 16);
 
+      // 4. Verified Badge Icon (RESELLER)
       const c4x = 136;
       doc.setFillColor(0, 43, 73);
       doc.circle(c4x + 2.5, metricsStartY + 6.5, 2.7, 'F');
@@ -491,8 +421,10 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("RESELLER", c4x + 7.5, metricsStartY + 7);
       doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(isResellerVal === "Yes" ? 22 : 239, isResellerVal === "Yes" ? 163 : 68, isResellerVal === "Yes" ? 74 : 68).text(isResellerVal, c4x + 7.5, metricsStartY + 16);
 
+      // Vertical Divider
       doc.setDrawColor(226, 232, 240).line(166, metricsStartY + 2, 166, metricsStartY + 20);
 
+      // QR Code
       try {
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent((COMPANY?.portalUrl || "https://cctvportal.vercel.app/request") + '/' + (log?.device_sn || sn))}`;
         const qrImg = await getBase64ImageFromURL(qrUrl);
@@ -504,29 +436,31 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
       }
       doc.setFontSize(4.5).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("SCAN TO VERIFY", 177.5, metricsStartY + 19.5, { align: "center" });
 
-      // Footer
+      // 🏢 5. Legal Footer & Dynamic Verification
       const footerStartY = metricsStartY + 26;
       doc.setDrawColor(226, 232, 240).line(14, footerStartY, pageWidth - 14, footerStartY);
 
-      doc.setFontSize(7.5).setFont("helvetica", "bold").setTextColor(0, 43, 73).text("LEGAL DISCLAIMER:", 14, footerStartY + 6);
-      doc.setFontSize(6.5).setFont("helvetica", "normal").setTextColor(100, 116, 139);
-      doc.text(`This is a system-verified digital report issued by ${COMPANY?.name || "Modern Enterprises"}.`, 14, footerStartY + 10.5);
-      doc.text(`Support: ${COMPANY?.supportEmail || "me.cctv247@gmail.com"}`, 14, footerStartY + 14.5);
-      doc.text("This document is electronically generated and receives no physical signature.", 14, footerStartY + 18.5);
+      // Left Column: Legal Disclaimer
+      doc.setFontSize(6.5).setFont("helvetica", "bold").setTextColor(0, 43, 73).text("LEGAL DISCLAIMER:", 14, footerStartY + 5);
+      doc.setFontSize(5.5).setFont("helvetica", "normal").setTextColor(100, 116, 139);
+      doc.text("This is a system-verified digital report issued by Modern Enterprises.", 14, footerStartY + 9);
+      doc.text(`Support: ${COMPANY?.supportEmail || "me.ce407@gmail.com"}`, 14, footerStartY + 13);
+      doc.text("This document is electronically generated and receives no physical signature.", 14, footerStartY + 17);
 
+      // Right Column: Dynamic Verification Details
       const rawDeviceSn = log?.device_sn || sn || "SEC-MOD-cial";
       const slicedPortalId = rawDeviceSn.length >= 8 ? rawDeviceSn.slice(-8).slice(0, 4) : rawDeviceSn.slice(0, 4);
       const verifiedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-      doc.setFontSize(7.5).setTextColor(15, 23, 42).setFont("helvetica", "bold").text(`Verified On: ${verifiedDate}`, pageWidth - 14, footerStartY + 6, { align: "right" });
-      doc.setFontSize(7).setTextColor(100, 116, 139).setFont("helvetica", "normal").text(`Portal ID: SEC-MOD-${slicedPortalId.toUpperCase()}`, pageWidth - 14, footerStartY + 10.5, { align: "right" });
-      doc.setFontSize(8).setTextColor(161, 98, 7).setFont("helvetica", "bold").text("ORIGINAL REPORT", pageWidth - 14, footerStartY + 18.5, { align: "right" });
+      doc.setFontSize(7).setTextColor(15, 23, 42).setFont("helvetica", "bold").text(`Verified On: ${verifiedDate}`, pageWidth - 14, footerStartY + 6, { align: "right" });
+      doc.setFontSize(6.5).setTextColor(100, 116, 139).setFont("helvetica", "normal").text(`Portal ID: SEC-MOD-${slicedPortalId.toUpperCase()}`, pageWidth - 14, footerStartY + 11, { align: "right" });
+      doc.setFontSize(7.5).setTextColor(161, 98, 7).setFont("helvetica", "bold").text("ORIGINAL REPORT", pageWidth - 14, footerStartY + 17, { align: "right" });
 
+      // 6. Bottom Navy Ribbon
       doc.setFillColor(0, 43, 73);
       doc.rect(0, pageHeight - 7, pageWidth, 7, 'F');
-      doc.setTextColor(255, 255, 255).setFontSize(7).setFont("helvetica", "bold");
-      
-      doc.text(`© ${COMPANY?.branding?.copyRight || "2026 | MODERN ENTERPRISES"}   |   DIGITAL MAINTENANCE SYSTEM`, pageWidth / 2, pageHeight - 2.5, { align: "center" });
+      doc.setTextColor(255, 255, 255).setFontSize(6.5).setFont("helvetica", "bold");
+      doc.text(`© 2026 MODERN ENTERPRISES   |   DIGITAL MAINTENANCE SYSTEM`, pageWidth / 2, pageHeight - 2.5, { align: "center" });
 
       doc.save(`Slip_${siteName}.pdf`);
     } catch (e) { console.error(e); }
@@ -541,6 +475,7 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
           style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
           className="animate-in slide-in-from-bottom relative flex w-full max-w-xl flex-col overflow-hidden border border-white/40 bg-white shadow-2xl duration-500 sm:h-auto sm:max-h-[90vh] sm:rounded-[45px]"
         >
+          {/* 🏗️ MODULAR SECTION 1: HEADER BLOCK */}
           <ModalHeader 
             siteName={siteName} 
             logsCount={logs.length} 
@@ -548,13 +483,16 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
             onDownloadMaster={downloadMasterPDF} 
           />
 
+          {/* 📝 MODULAR SECTION 2: MAIN SCROLLABLE BODY */}
           <ModalMainBody 
             loading={loading} 
             logs={logs} 
             onPrintReceipt={downloadSingleReceipt} 
           />
 
+          {/* 🏗️ MODULAR SECTION 3: FOOTER BRANDING BLOCK */}
           <ModalFooter />
+          
         </div>
       </div>
 
@@ -574,6 +512,10 @@ export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryM
     </>
   );
 }
+
+// ==========================================
+// 🛠️ SUB-COMPONENTS SECTIONS FOR EASY EDITING
+// ==========================================
 
 function ModalHeader({ siteName, logsCount, onClose, onDownloadMaster }: any) {
   return (

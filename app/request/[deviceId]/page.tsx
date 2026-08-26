@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // app/request/[deviceId]/page.tsx
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -111,79 +111,79 @@ export default function RequestPage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" /></div>;
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   return (
-     <div className="min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-4 sm:p-6 text-left">
+     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F1F5F9] p-4 text-left sm:p-6">
      {/* ✅ 1. Permission Bodyguard yahan add karein */}
       <PermissionGate />
-      <div className="w-full max-w-[420px] bg-white rounded-[45px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-white flex flex-col transition-all duration-500">
+      <div className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[45px] border border-white bg-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500">
         
         {/* Header */}
-        <div className="bg-[#d5e0dd] pt-8 pb-6 px-6 text-center border-b border-blue-50">
-          <h1 className="text-2xl sm:text-3xl font-[1000] text-slate-900 uppercase italic tracking-tighter leading-none truncate px-2">
+        <div className="border-b border-blue-50 bg-[#d5e0dd] px-6 pt-8 pb-6 text-center">
+          <h1 className="truncate px-2 text-2xl leading-none font-[1000] tracking-tighter text-slate-900 uppercase italic sm:text-3xl">
             {device?.site_name}
           </h1>
-          <div className="flex items-center justify-center gap-2 mt-3 text-emerald-500 bg-emerald-8 w-fit mx-auto px-4 py-1 rounded-full border border-emerald-100">
+          <div className="bg-emerald-8 mx-auto mt-3 flex w-fit items-center justify-center gap-2 rounded-full border border-emerald-100 px-4 py-1 text-emerald-500">
              <CheckCircle2 size={14} className="animate-pulse" />
-             <p className="text-emerald-700 font-bold text-[9px] tracking-[2px] uppercase">Location Sync Success</p>
+             <p className="font-bold tracking-[2px] text-emerald-700 text-[9px] uppercase">Location Sync Success</p>
           </div>
         </div>
 
         {/* Action Body */}
-        <div className="p-8 space-y-6">
+        <div className="space-y-6 p-8">
           {inRange ? (
             <div className="space-y-6">
               {!isFormOpen ? (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-500">
+                <div className="animate-in fade-in grid grid-cols-2 gap-4 duration-500">
                   <button onClick={() => setIsFormOpen(true)} className="flex flex-col items-center p-8 bg-slate-50 rounded-[40px] border-2 border-slate-100 active:scale-95 transition-all group shadow-sm hover:bg-white hover:border-blue-200">
-                    <div className="p-4 bg-blue-100 rounded-3xl mb-4 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                    <div className="mb-4 rounded-3xl bg-blue-100 p-4 text-blue-600 transition-all group-hover:bg-blue-600 group-hover:text-white">
                       <HelpCircle size={28} />
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">Forgot<br/>Password</span>
+                    <span className="font-black tracking-widest text-[9px] text-slate-700 uppercase">Forgot<br/>Password</span>
                   </button>
                   <button onClick={() => setIsHistoryOpen(true)} className="flex flex-col items-center p-8 bg-slate-50 rounded-[40px] border-2 border-slate-100 active:scale-95 transition-all group shadow-sm hover:bg-white hover:border-emerald-200">
-                    <div className="p-4 bg-emerald-100 rounded-3xl mb-4 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                    <div className="mb-4 rounded-3xl bg-emerald-100 p-4 text-emerald-600 transition-all group-hover:bg-emerald-600 group-hover:text-white">
                       <HistoryIcon size={28} />
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">Maintenance<br/>History</span>
+                    <span className="font-black tracking-widest text-[9px] text-slate-700 uppercase">Maintenance<br/>History</span>
                   </button>
                 </div>
               ) : (
-                <div className="space-y-5 animate-in slide-in-from-top-4 duration-500 bg-slate-50/80 p-6 rounded-[40px] border border-slate-100">
+                <div className="animate-in slide-in-from-top-4 space-y-5 rounded-[40px] border border-slate-100 bg-slate-50/80 p-6 duration-500">
                   <div className="flex items-center gap-2 px-2">
-                    <Timer size={14} className="text-blue-500 animate-pulse" />
-                    <span className="text-[10px] tracking-[4px] font-black text-slate-400 uppercase italic">Access Request</span>
+                    <Timer size={14} className="animate-pulse text-blue-500" />
+                    <span className="font-black tracking-[4px] text-[10px] text-slate-400 uppercase italic">Access Request</span>
                   </div>
 
                   <div className="relative">
-                    <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500" size={18} />
+                    <Smartphone className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500" size={18} />
                     <input 
                       type="tel" maxLength={10} placeholder="WhatsApp Number" 
-                      className="w-full py-4 pl-12 pr-4 bg-white border-2 border-slate-100 rounded-[22px] outline-none font-black text-sm focus:border-blue-500 transition-all shadow-inner"
+                      className="w-full rounded-[22px] border-2 border-slate-100 bg-white py-4 pr-4 pl-12 text-sm font-black shadow-inner transition-all outline-none focus:border-blue-500"
                       onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} value={mobile}
                     />
                   </div>
 
                   <div className="relative">
-                    <MessageSquare className="absolute left-4 top-4 text-slate-300 group-focus-within:text-emerald-500" size={18} />
+                    <MessageSquare className="absolute top-4 left-4 text-slate-300 group-focus-within:text-emerald-500" size={18} />
                     <textarea 
                       placeholder="Issue Details..." rows={2}
-                      className="w-full py-4 pl-12 pr-4 bg-white border-2 border-slate-100 rounded-[22px] outline-none font-bold text-xs focus:border-blue-500 transition-all resize-none shadow-inner"
+                      className="w-full resize-none rounded-[22px] border-2 border-slate-100 bg-white py-4 pr-4 pl-12 text-xs font-bold shadow-inner transition-all outline-none focus:border-blue-500"
                       onChange={(e) => setMessage(e.target.value)} value={message}
                     />
                   </div>
 
                   {cooldownTime > 0 ? (
-                    <div className="bg-orange-50 border-2 border-dashed border-orange-100 p-4 rounded-[25px] flex flex-col items-center justify-center">
-                        <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest mb-1 italic">Cooldown Active</p>
-                        <p className="text-xl font-[1000] text-orange-600 tracking-tighter">{formatTime(cooldownTime)}</p>
+                    <div className="flex flex-col items-center justify-center rounded-[25px] border-2 border-dashed border-orange-100 bg-orange-50 p-4">
+                        <p className="mb-1 font-black tracking-widest text-[8px] text-orange-600 uppercase italic">Cooldown Active</p>
+                        <p className="text-xl font-[1000] tracking-tighter text-orange-600">{formatTime(cooldownTime)}</p>
                     </div>
                   ) : (
                     <button 
                       onClick={handleRequest} 
                       disabled={reqLoading || mobile.length < 10}
-                      className="w-full bg-blue-600 text-white py-5 rounded-[25px] font-[1000] uppercase text-[11px] tracking-[4px] shadow-xl active:scale-95 disabled:opacity-50 transition-all italic border-b-4 border-blue-900"
+                      className="w-full rounded-[25px] border-b-4 border-blue-900 bg-blue-600 py-5 font-[1000] tracking-[4px] text-white text-[11px] uppercase italic shadow-xl transition-all active:scale-95 disabled:opacity-50"
                     >
                       {reqLoading ? <Loader2 className="animate-spin" size={18} /> : "Submit Request"}
                     </button>
@@ -193,20 +193,20 @@ export default function RequestPage() {
               )}
             </div>
           ) : (
-            <div className="py-12 text-center space-y-5">
-               <div className="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto border-4 border-white shadow-lg">
+            <div className="space-y-5 py-12 text-center">
+               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-red-50 shadow-lg">
                   <XCircle size={40} className="text-red-500" />
                </div>
-              <h2 className="text-xl font-black uppercase italic text-slate-800">Out of Range</h2>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[4px] mt-2 leading-relaxed px-4"> Please be present at the site to sync GPS. </p>
+              <h2 className="text-xl font-black text-slate-800 uppercase italic">Out of Range</h2>
+              <p className="mt-2 px-4 leading-relaxed font-bold tracking-[4px] text-slate-400 text-[10px] uppercase"> Please be present at the site to sync GPS. </p>
               <button onClick={() => window.location.reload()} className="bg-slate-900 text-white px-10 py-5 rounded-[22px] font-black uppercase text-[10px] tracking-widest active:scale-90 transition-all border-b-4 border-black">Retry GPS Sync</button>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="pb-10 text-center border-t border-slate-50 pt-6">
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-[2px] italic">{COMPANY?.branding?.tagline2 || "SECURITY SOLUTIONS & INTERIOR DECORATOR"}</p>
+        <div className="border-t border-slate-50 pt-6 pb-10 text-center">
+          <p className="font-black tracking-[2px] text-[8px] text-slate-400 uppercase italic">{COMPANY?.branding?.tagline2 || "SECURITY SOLUTIONS & INTERIOR DECORATOR"}</p>
         </div>
       </div>
 
