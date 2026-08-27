@@ -20,7 +20,7 @@ export const COMPANY = {
   links: {
   linktree: "https://linktr.ee/wazahul",
   whatsapp: "https://wa.me/917021330886",
-  website: "https://modernenterprises.com",
+  website: "https://modern-enterprises.grexa.site/",
 },
 
   app: {

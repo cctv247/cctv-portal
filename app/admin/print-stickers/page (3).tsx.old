@@ -3,7 +3,7 @@
 // app/admin/print-stickers/page.tsx
 import { useEffect, useState } from "react";
 import { COMPANY } from "@/lib/config";
-import { Printer, Cctv, PhoneCall, } from "lucide-react";
+import { Printer, Cctv, PhoneCall} from "lucide-react";
 
 export default function PrintStickersPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -50,7 +50,7 @@ export default function PrintStickersPage() {
                         Maintenance
                       </h2>
                     </div>
-                    <Cctv size={35} className="mr-5 text-white" />
+                    <Cctv size={28} className="mr-5 text-white" />
                   </div>
 
                   {/* Body with High-Tech CCTV / PCB Circuit Architecture Background */}
@@ -181,7 +181,7 @@ export default function PrintStickersPage() {
                         {company?.name || "Modern Enterprises"}
                       </h3>
                       <div className="mt-1 flex items-center gap-1 font-black text-[7.5pt] text-slate-600">
-                      <PhoneCall size={12} className="text-[#1a4a8d]" />
+                      <PhoneCall size={10} className="text-[#1a4a8d]" />
                       <span>Support: {company?.contact || "+91 7021330886"}</span>
                      </div>
                     </div>
