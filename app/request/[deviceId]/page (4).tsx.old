@@ -8,7 +8,7 @@ import { COMPANY } from "@/lib/config";
 import { 
   Loader2, Lock, Timer, History as HistoryIcon, 
   Smartphone, MessageSquare, HelpCircle, CheckCircle2, XCircle,
-  AlertTriangle, PhoneCall, ShieldCheck, ShieldAlert, Clock
+  AlertTriangle, PhoneCall, ShieldCheck, ShieldAlert
 } from "lucide-react";
 import HistoryModal from "../../admin/HistoryModal";
 import MasterDialog from "@/lib/components/MasterDialog";
@@ -21,7 +21,6 @@ export default function RequestPage() {
   const [device, setDevice] = useState<any>(null);
   const [isAmcActive, setIsAmcActive] = useState<boolean>(false);
   const [amcExpiryDate, setAmcExpiryDate] = useState<string | null>(null);
-  const [daysCount, setDaysCount] = useState<number>(0);
   const [mobile, setMobile] = useState("");
   const [message, setMessage] = useState("");
   const [inRange, setInRange] = useState<boolean | null>(null);
@@ -51,38 +50,16 @@ export default function RequestPage() {
       if (dev) {
         setDevice(dev);
 
-        // 🛡️ STRICT 365-DAY AMC VALIDATION LOGIC
-        let amcStatus = false;
-        let calculatedExpiryIso = null;
-        let calculatedDays = 0;
-
-        if (dev.is_reseller === true && dev.last_maintenance) {
-          const startDate = new Date(dev.last_maintenance);
-          
-          if (!isNaN(startDate.getTime())) {
-            // Expiry Date = Start Date + 365 Days
-            const expiryDate = new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
-            calculatedExpiryIso = expiryDate.toISOString();
-
-            const today = new Date();
-            const diffTime = expiryDate.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays >= 0) {
-              // 365 din ke andar hai -> AMC Active
-              amcStatus = true;
-              calculatedDays = diffDays;
-            } else {
-              // 365 din se zyada ho gaye -> AMC Expired
-              amcStatus = false;
-              calculatedDays = Math.abs(diffDays);
-            }
-          }
+        // AMC Validation Logic
+        const hasAmcFlag = dev.is_amc_active === true || dev.is_reseller === true;
+        let isDateValid = true;
+        if (dev.amc_expiry) {
+          isDateValid = new Date(dev.amc_expiry).getTime() >= new Date().getTime();
+          setAmcExpiryDate(dev.amc_expiry);
         }
 
-        setIsAmcActive(amcStatus);
-        setAmcExpiryDate(calculatedExpiryIso);
-        setDaysCount(calculatedDays);
+        const activeStatus = hasAmcFlag && isDateValid;
+        setIsAmcActive(activeStatus);
 
         if (authorized) { 
           setInRange(true); 
@@ -195,10 +172,9 @@ export default function RequestPage() {
 
             {/* AMC Status Pill */}
             {isAmcActive ? (
-              <div className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">
+              <div className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">
                 <ShieldCheck size={13} className="text-blue-600" />
                 <span className="font-black tracking-wider text-[8.5pt] uppercase">AMC Active</span>
-                <span className="font-bold text-[7.5pt] text-blue-500">({daysCount}d left)</span>
               </div>
             ) : (
               <div className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
@@ -214,7 +190,7 @@ export default function RequestPage() {
           {inRange ? (
             <div className="space-y-6">
               
-              {/* ⚠️ NON-AMC / EXPIRED ALERT BOX */}
+              {/* ⚠️ HIGH-VISIBILITY NON-AMC ALERT BOX (Clean Header without Standard Tier) */}
               {!isAmcActive && (
                 <div className="animate-in fade-in slide-in-from-top-3 overflow-hidden rounded-[32px] border-2 border-amber-200 bg-gradient-to-b from-amber-50/90 to-amber-100/50 p-6 text-left shadow-lg shadow-amber-500/5 duration-300">
                   <div className="flex items-start gap-3.5">
@@ -228,23 +204,15 @@ export default function RequestPage() {
                       </h3>
                       
                       <p className="mt-2 leading-relaxed font-medium text-amber-900/90 text-[10.5pt]">
-                        System active maintenance contract mein nahi hai. Unplanned visits aur emergency resets par standard charges apply honge. Zero visit charges aur priority support ke liye abhi AMC active karein.
+                        Aapka maintenance contract expire ho chuka hai. Bina AMC, site visits aur password resets par standard charges lagte hain. Priority service aur zero-cost support ke liye abhi AMC plan active karein.
                       </p>
 
-                      {/* 🚩 Expired On: Sirf tabhi show hoga jab is_reseller === true ho aur amcExpiryDate ho */}
-                      {device?.is_reseller === true && amcExpiryDate && (
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <div className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/40 bg-amber-200/50 px-3 py-1 font-bold text-[8.5pt] text-amber-900">
-                            <span>Expired On:</span>
-                            <span className="font-black text-amber-950">
-                              {new Date(amcExpiryDate).toLocaleDateString("en-GB")}
-                            </span>
-                          </div>
-                          {daysCount > 0 && (
-                            <span className="rounded-xl border border-red-200 bg-red-100 px-2.5 py-1 font-black tracking-wider text-[8pt] text-red-700 uppercase">
-                              ({daysCount} Days Ago)
-                            </span>
-                          )}
+                      {amcExpiryDate && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-amber-300/40 bg-amber-200/50 px-3 py-1 font-bold text-[8.5pt] text-amber-900">
+                          <span>Expired On:</span>
+                          <span className="font-black text-amber-950">
+                            {new Date(amcExpiryDate).toLocaleDateString("en-GB")}
+                          </span>
                         </div>
                       )}
                     </div>

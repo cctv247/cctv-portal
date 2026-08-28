@@ -1,5 +1,4 @@
 ﻿"use client";
-
 // app/admin/EditModal.tsx
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
@@ -7,10 +6,10 @@ import { COMPANY } from "@/lib/config";
 import { 
   X, Save, ShieldCheck, MapPin, Info, 
   Eye, EyeOff, Navigation, Loader2, Cpu, Hash, Layers, Target, KeyRound, Globe, Settings,
-  Camera, HardDrive, Zap, Calendar
+  Camera, HardDrive, Zap
 } from "lucide-react";
 
-// 🚩 Zaroori: Map dynamic import
+// 🚩 Zaroori: Map ko dynamic import karein taaki 'window is not defined' error na aaye
 const MapPicker = dynamic(() => import("@/lib/components/MapPicker"), { 
   ssr: false,
   loading: () => (
@@ -22,35 +21,21 @@ const MapPicker = dynamic(() => import("@/lib/components/MapPicker"), {
 });
 
 interface DeviceData {
-  device_sn: string; 
-  site_name: string; 
-  category: string; 
-  model: string;
-  ip_address: string; 
-  user_name: string; 
-  user_pass: string; 
-  admin_name: string;
-  admin_pass: string; 
-  v_code: string; 
-  latitude: string | number;
-  longitude: string | number; 
-  radius: string | number; 
-  device_notes: string;
+  device_sn: string; site_name: string; category: string; model: string;
+  ip_address: string; user_name: string; user_pass: string; admin_name: string;
+  admin_pass: string; v_code: string; latitude: string | number;
+  longitude: string | number; radius: string | number; device_notes: string;
+  // 🆕 Hardware Metrics
   camera_count?: number;
   device_count?: number;
   power_count?: number;
   is_reseller?: boolean;
-  last_maintenance?: string;
   [key: string]: any;
 }
 
 interface EditModalProps {
-  isOpen: boolean; 
-  device: DeviceData | null; 
-  onClose: () => void;
-  onUpdate: () => void; 
-  isSaving: boolean; 
-  setDevice: (device: DeviceData) => void;
+  isOpen: boolean; device: DeviceData | null; onClose: () => void;
+  onUpdate: () => void; isSaving: boolean; setDevice: (device: DeviceData) => void;
 }
 
 export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving, setDevice }: EditModalProps) {
@@ -77,25 +62,6 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
 
   const handleChange = (key: keyof DeviceData, value: any) => {
     if (typeof setDevice === "function") setDevice({ ...device, [key]: value });
-  };
-
-  // 🔄 RESELLER TOGGLE WITH AUTO LAST_MAINTENANCE CURRENT DATE LOGIC
-  const handleToggleReseller = () => {
-    const isCurrentlyInactive = !device.is_reseller;
-
-    if (isCurrentlyInactive) {
-      const todayDate = new Date().toISOString().split("T")[0];
-      setDevice({
-        ...device,
-        is_reseller: true,
-        last_maintenance: device.last_maintenance || todayDate
-      });
-    } else {
-      setDevice({
-        ...device,
-        is_reseller: false
-      });
-    }
   };
 
   // 🚀 MASTER GPS UPDATE LOGIC
@@ -156,7 +122,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             </div>
           </div>
 
-          {/* Form Fields Grid */}
+          {/* Form Fields Grid: Model & IP Included */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <InputField label="Site Name" icon="🏢" value={device.site_name} onChange={(v:any) => handleChange('site_name', v)} />
             
@@ -227,87 +193,25 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
               </div>
             </div>
 
-            {/* ℹ️ RESELLER TOGGLE WITH INTERACTIVE TOOLTIP */}
             <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3.5 pt-2">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={16} className="shrink-0 text-purple-600" />
-                <span className="font-black text-[10px] text-slate-700 uppercase italic">
-                  Reseller Maintenance Contract
-                </span>
-                
-                {/* Floating Info Tooltip */}
-                <div className="group relative flex cursor-pointer items-center">
-                  <Info size={13} className="text-slate-400 transition-colors group-hover:text-blue-600" />
-                  
-                  <div className="pointer-events-none absolute bottom-full left-1/2 z-[150] mb-2 w-64 -translate-x-1/2 rounded-2xl bg-slate-900 p-3 text-left text-white opacity-0 shadow-2xl transition-all duration-200 group-hover:opacity-100">
-                    <p className="font-black tracking-wider text-[9px] text-blue-400 uppercase">
-                      Contract Status Guide
-                    </p>
-                    <p className="mt-1 leading-tight font-medium text-[8pt] text-slate-300">
-                      <strong className="text-emerald-400">Yes (Active):</strong> Third-party reseller/dealer AMC. Isko enable karte hi maintenance date aaj ki set ho jayegi.<br/>
-                      <strong className="mt-1 block text-amber-400">No (Direct):</strong> Non-AMC site. Client direct support aur on-demand charges par rahega.
-                    </p>
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  </div>
-                </div>
-              </div>
-
+              <span className="flex items-center gap-2 font-black text-[10px] text-slate-700 uppercase italic">
+                <ShieldCheck size={16} className="text-purple-600" /> Reseller Maintenance Contract
+              </span>
               <button 
                 type="button"
-                onClick={handleToggleReseller}
+                onClick={() => handleChange('is_reseller', device.is_reseller === false ? true : false)}
                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm ${
                   device.is_reseller !== false 
                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
-                    : 'bg-amber-50 text-amber-700 border border-amber-300'
+                    : 'bg-white text-slate-400 border border-slate-200'
                 }`}
               >
                 {device.is_reseller !== false ? "Yes (Active)" : "No (Direct)"}
               </button>
             </div>
-
-            {/* 📅 LAST MAINTENANCE DATE EDIT FIELD WITH TOOLTIP */}
-            <div className="flex flex-col gap-2 rounded-2xl border border-blue-100/60 bg-blue-50/30 p-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <label className="flex items-center gap-1.5 font-black text-[9px] text-blue-900 uppercase italic">
-                    <Calendar size={13} className="text-blue-600" /> AMC Start Date
-                  </label>
-                  
-                  {/* ℹ️ Floating Info Tooltip for AMC Start Date, 365-Day Validity & Set Today */}
-                  <div className="group relative flex cursor-pointer items-center">
-                    <Info size={12} className="text-slate-400 transition-colors group-hover:text-blue-600" />
-                    
-                    <div className="pointer-events-none absolute bottom-full left-1/2 z-[150] mb-2 w-72 -translate-x-1/2 rounded-2xl bg-slate-900 p-3.5 text-left text-white opacity-0 shadow-2xl transition-all duration-200 group-hover:opacity-100">
-                      <p className="font-black tracking-wider text-[9px] text-blue-400 uppercase">
-                        AMC Start &amp; 365-Day Expiry Guide
-                      </p>
-                      <p className="mt-1 leading-tight font-medium text-[8pt] text-slate-300">
-                        <strong className="text-blue-300">AMC Start Date:</strong> Contract start date. Agar yeh date <strong className="text-amber-400">365 din se purani</strong> ho gayi toh system portal par automatically <strong className="text-red-400">Non-AMC (Expired)</strong> status show karega.<br/>
-                        <strong className="mt-1.5 block text-emerald-400">Set Today:</strong> Naye saal ke AMC renewal par date ko aaj ki date par reset karne ke liye.
-                      </p>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleChange('last_maintenance', new Date().toISOString().split("T")[0])}
-                  className="text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-300 px-2.5 py-1 rounded-lg hover:bg-emerald-100 active:scale-95 transition-all shadow-sm cursor-pointer"
-                >
-                  Set Today
-                </button>
-              </div>
-              <input
-                type="date"
-                value={device.last_maintenance ? device.last_maintenance.split("T")[0] : ""}
-                onChange={(e) => handleChange('last_maintenance', e.target.value)}
-                className="w-full p-3 bg-white border border-blue-200 rounded-xl font-bold text-slate-800 text-[11px] outline-none focus:border-blue-500 shadow-inner"
-              />
-            </div>
           </div>
 
-          {/* 🔐 SECURITY VAULT */}
+          {/* 🔐 SECURITY VAULT (Full Credentials) */}
           <div className="space-y-5 rounded-[40px] border border-slate-100 bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between px-1">
               <span className="flex items-center gap-2 font-[1000] tracking-widest text-[10px] text-blue-600 uppercase italic">
@@ -327,7 +231,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
             <InputField label="Verification Code (V-Code)" icon={<KeyRound size={16} className="text-orange-500" />} type={showPass ? "text" : "password"} value={device.v_code} onChange={(v:any) => handleChange('v_code', v)} light />
           </div>
 
-          {/* 📍 GPS & SATELLITE SECTION */}
+          {/* 📍 GPS & SATELLITE SECTION (Interactive Map) */}
           <div className="relative space-y-5 overflow-hidden rounded-[40px] border border-slate-100 bg-white p-2 shadow-xl">
             <div className="mb-1 flex items-center justify-between">
               <div className="flex flex-col text-left">
@@ -361,29 +265,10 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
               <InputField label="Longitude" icon="📍" value={device.longitude} onChange={(v:any) => handleChange('longitude', v)} light />
             </div>
 
-            {/* 🎯 GEOFENCE RADIUS SECTION WITH HOVER TOOLTIP */}
             <div className="space-y-2 text-left">
-              <div className="ml-4 flex items-center gap-2">
-                <label className="flex items-center gap-1.5 font-black text-[9px] text-slate-400 uppercase italic">
-                  <Target size={12} className="text-blue-500" /> Geofence Radius (Meters)
-                </label>
-                
-                {/* Floating Info Tooltip */}
-                <div className="group relative flex cursor-pointer items-center">
-                  <Info size={12} className="text-slate-400 transition-colors group-hover:text-blue-600" />
-                  
-                  <div className="pointer-events-none absolute bottom-full left-1/2 z-[150] mb-2 w-64 -translate-x-1/2 rounded-2xl bg-slate-900 p-3 text-left text-white opacity-0 shadow-2xl transition-all duration-200 group-hover:opacity-100">
-                    <p className="font-black tracking-wider text-[9px] text-blue-400 uppercase">
-                      Geofence Radius Guide
-                    </p>
-                    <p className="mt-1 leading-tight font-medium text-[8pt] text-slate-300">
-                      Site location se customer/technician ka max allowed distance (meters mein). Is daayre ke andar hone par hi QR scan aur Password Request accept hogi. Standard: <strong className="text-emerald-400">100m - 200m</strong>.
-                    </p>
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  </div>
-                </div>
-              </div>
-
+              <label className="ml-4 flex items-center gap-2 font-black text-[9px] text-slate-400 uppercase italic">
+                <Target size={12} className="text-blue-500" /> Geofence Radius (Meters)
+              </label>
               <div className="relative">
                 <input 
                   type="number" 
@@ -437,7 +322,7 @@ export default function EditModal({ isOpen, device, onClose, onUpdate, isSaving,
   );
 }
 
-// Reusable Input Field
+// Reusable Input Field for this modal
 function InputField({ label, icon, value, onChange, type = "text", light = false }: any) {
   return (
     <div className="space-y-1.5 text-left">

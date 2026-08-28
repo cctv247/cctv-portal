@@ -1,4 +1,5 @@
 ﻿"use client";
+
 // app/admin/page.tsx
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { COMPANY } from "@/lib/config";
@@ -6,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import AuthGuard from "@/lib/components/AuthGuard";
 import RequestManagerModal, { RequestNotification } from "../request/RequestManagerModal";
-import { encryptData } from '@/lib/crypto';
+import { encryptData } from "@/lib/crypto";
 import StickerModal from "@/lib/components/StickerModal";
 import { 
   Search, Rocket, Pencil, MapPin, Plus, X,
@@ -19,7 +20,7 @@ import MasterDialog from "@/lib/components/MasterDialog";
 
 export default function AdminCentral() {
   const router = useRouter();
-  
+
   // --- STATES ---
   const [devices, setDevices] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -56,12 +57,10 @@ export default function AdminCentral() {
 
       if (devRes.data) {
         const processed = devRes.data.map((device: any) => {
-          // 🚩 FIX: Sort logs by created_at DESC (Sabse taaza report sabse pehle)
           const sortedLogs = (device.service_logs || []).sort(
             (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
           
-          // Latest log ka next_service_date lein (agar null hai toh null hi rahega)
           const latestLog = sortedLogs[0];
           return { 
             ...device, 
@@ -142,7 +141,8 @@ export default function AdminCentral() {
         camera_count: Number(selectedDevice.camera_count) || 0,
         device_count: Number(selectedDevice.device_count) || 1,
         power_count: Number(selectedDevice.power_count) || 1,
-        is_reseller: selectedDevice.is_reseller !== false
+        is_reseller: selectedDevice.is_reseller !== false,
+        last_maintenance: selectedDevice.last_maintenance || null,
       };
 
       if (selectedDevice.user_pass) updatePayload.user_pass = encryptData(selectedDevice.user_pass);
@@ -262,7 +262,8 @@ export default function AdminCentral() {
                 {stats.pending > 0 && <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 font-black text-white text-[10px] shadow-sm">{stats.pending}</span>}
               </button>
               <button onClick={() => setIsStickerOpen(true)} className="p-2.5 bg-white border border-slate-200 text-blue-600 rounded-2xl shadow-lg active:scale-90 transition-all">
-                 <QrCode size={16} /> </button>
+                <QrCode size={16} />
+              </button>
               <button onClick={triggerLogoutConfirm} className="rounded-2xl border border-red-50 bg-white p-2.5 text-red-500 shadow-lg active:scale-90"><LogOut size={16} /></button>
             </div>
           </div>
@@ -314,7 +315,7 @@ export default function AdminCentral() {
                       <button onClick={() => trackOnMap(device)} className="p-3 bg-red-50 text-red-500 rounded-2xl border border-red-100 active:scale-90 shadow-sm"><MapPin size={18} /></button>
                     </div>
 
-                    {/* 🔄 NEXT SERVICE STATUS / NON-AMC INDICATOR */}
+                    {/* NEXT SERVICE STATUS / NON-AMC INDICATOR */}
                     {device.next_service_date ? (
                       <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border ${getServiceStatusStyles(device.next_service_date)}`}>
                         <CalendarClock size={14} />
@@ -338,7 +339,7 @@ export default function AdminCentral() {
                   {isSuperAdmin && (
                     <>
                       <button onClick={() => router.push('/add-device')} className="flex-1 flex flex-col items-center gap-2 p-2 text-slate-400 active:text-emerald-600"><div className="rounded-[20px] bg-slate-50 p-3 active:bg-emerald-50"><Plus size={20} /></div><span className="font-black tracking-widest text-[9px] uppercase">Add</span></button>
-                   
+                    
                       <button 
                         onClick={async () => {
                           setLoading(true); 
