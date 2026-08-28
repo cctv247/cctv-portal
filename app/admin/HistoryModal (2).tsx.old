@@ -1,0 +1,656 @@
+﻿"use client";
+// app/admin/HistoryModal.tsx-- is line ko delet na kare 
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { COMPANY } from "@/lib/config";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { 
+  X, Calendar, User, Wrench, Clock, 
+  Loader2, ClipboardList, FileText,
+  Printer, MessageSquare, AlertCircle, PhoneCall
+} from "lucide-react";
+import MasterDialog from "@/lib/components/MasterDialog"; 
+
+interface HistoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  sn: string;
+  siteName: string;
+}
+
+export default function HistoryModal({ isOpen, onClose, sn, siteName }: HistoryModalProps) {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [deviceDetails, setDeviceDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [dialog, setDialog] = useState({ isOpen: false, title: "", message: "", type: "info" as any });
+
+  useEffect(() => {
+    if (isOpen) {
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+      
+      const setVh = () => {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+      };
+      setVh();
+      window.addEventListener('resize', setVh);
+      
+      if (sn) fetchData();
+
+      return () => {
+        document.body.style.overflow = 'unset';
+        document.body.style.paddingRight = '0px';
+        window.removeEventListener('resize', setVh);
+      };
+    }
+  }, [isOpen, sn]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Service Logs
+      const { data: logData, error: logError } = await supabase
+        .from("service_logs")
+        .select("*")
+        .eq("device_sn", sn)
+        .order("created_at", { ascending: false });
+
+      if (logError) throw logError;
+      setLogs(logData || []);
+
+      const { data: devData, error: devError } = await supabase
+        .from("devices")
+        .select("category, camera_count, device_count, power_count, is_reseller")
+        .eq("device_sn", sn)
+        .maybeSingle();
+
+      if (!devError && devData) {
+        setDeviceDetails(devData);
+      }
+    } catch (err: any) {
+      setDialog({ isOpen: true, title: "Sync Error", message: err.message, type: "danger" });
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  const getBase64ImageFromURL = (url: string): Promise<string> => {
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.setAttribute("crossOrigin", "anonymous");
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width || 50;
+            canvas.height = img.height || 50;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+          } catch {
+            resolve("");
+          }
+        };
+        img.onerror = () => resolve("");
+        img.src = url;
+      } catch {
+        resolve("");
+      }
+    });
+  };
+
+  // 📄 TOP HEADER BRANDING ENGINE (SECURITY SERVICES)
+  const applyBranding = async (doc: jsPDF) => {
+    try {
+      const imgData = await getBase64ImageFromURL("/logo.ico");
+      if (imgData) {
+        doc.addImage(imgData, "PNG", 14, 8, 14, 14);
+      } else {
+        doc.setFillColor(0, 43, 73);
+        doc.circle(21, 15, 7, 'F');
+        doc.setTextColor(245, 158, 11).setFontSize(9).setFont("helvetica", "bold").text("me.", 17.5, 17.5);
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    doc.setTextColor(0, 43, 73).setFontSize(14).setFont("helvetica", "bold").text(COMPANY?.name?.toUpperCase() || "MODERN ENTERPRISES", 31, 13);
+    
+    // 🛡️ Dedicated Security Systems Branding
+    doc.setFontSize(6.5).setFont("helvetica", "bold").setTextColor(100, 116, 139);
+    doc.text("DIGITAL SURVEILLANCE  •  CCTV  •  ACCESS CONTROL  •  SECURITY SOLUTIONS", 31, 18);
+
+    doc.setFontSize(6.5).setFont("helvetica", "bold").setTextColor(15, 23, 42);
+    doc.text(`${COMPANY?.contact || "+91 7021330886"}   |   ${COMPANY?.supportEmail || "me.ce407@gmail.com"}`, 31, 24);
+
+    const pageWidth = doc.internal.pageSize.width;
+    doc.setFillColor(0, 43, 73);
+    doc.roundedRect(pageWidth - 75, 8, 61, 20, 2, 2, 'F');
+
+    const rx = pageWidth - 47;
+    const ry = 10.5;
+    doc.setDrawColor(255, 255, 255).setLineWidth(0.4).setFillColor(0, 43, 73);
+    doc.roundedRect(rx, ry, 5.5, 7, 0.8, 0.8, 'S');
+    doc.line(rx + 1.2, ry + 2.5, rx + 4.3, ry + 2.5);
+    doc.line(rx + 1.2, ry + 4, rx + 4.3, ry + 4);
+    doc.line(rx + 1.2, ry + 5.5, rx + 3.2, ry + 5.5);
+
+    doc.setFillColor(34, 197, 94);
+    doc.circle(rx + 5, ry + 6, 1.4, 'F');
+    doc.setDrawColor(255, 255, 255).setLineWidth(0.3);
+    doc.line(rx + 4.5, ry + 6, rx + 4.8, ry + 6.6);
+    doc.line(rx + 4.8, ry + 6.6, rx + 5.6, ry + 5.4);
+
+    doc.setTextColor(245, 158, 11).setFontSize(6.5).setFont("helvetica", "bold").text("MAINTENANCE", pageWidth - 44.5, 22.5, { align: "center" });
+    doc.setTextColor(255, 255, 255).setFontSize(7).setFont("helvetica", "bold").text("COMPLETION SLIP", pageWidth - 44.5, 26, { align: "center" });
+
+    doc.setDrawColor(226, 232, 240).setLineWidth(0.4).line(14, 30, pageWidth - 14, 30);
+  };
+
+  const downloadMasterPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      await applyBranding(doc);
+      doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(0, 43, 73).text(`SERVICE HISTORY: ${siteName.toUpperCase()}`, 14, 37);
+      
+      autoTable(doc, {
+        startY: 42,
+        head: [['DATE', 'ENGINEER', 'JOB TYPE', 'WORK DESCRIPTION', 'STATUS']],
+        body: logs.map(log => [
+          new Date(log.created_at).toLocaleDateString('en-GB'), 
+          log.technician_name?.toUpperCase() || "N/A", 
+          (log.service_type || 'Service').toUpperCase(),
+          log.work_done || "N/A",
+          (log.status || 'Completed').toUpperCase().replace(/'/g, "").replace(/✅/g, "")
+        ]),
+        headStyles: { fillColor: [0, 43, 73] },
+        styles: { fontSize: 7, cellPadding: 3 },
+        didDrawPage: () => {
+          const pageWidth = doc.internal.pageSize.width;
+          const pageHeight = doc.internal.pageSize.height;
+          doc.setFillColor(0, 43, 73);
+          doc.rect(0, pageHeight - 8, pageWidth, 8, 'F');
+          doc.setTextColor(255, 255, 255).setFontSize(6).setFont("helvetica", "bold");
+          doc.text(`© 2026 MODERN ENTERPRISES | DIGITAL MAINTENANCE SYSTEM`, pageWidth / 2, pageHeight - 3, { align: "center" });
+        }
+      });
+      doc.save(`Logs_${siteName}.pdf`);
+    } catch (e) { console.error(e); }
+  };
+
+  const downloadSingleReceipt = async (log: any) => {
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+
+      await applyBranding(doc);
+
+      const cleanStatus = (log.status || "Completed").toUpperCase().replace(/'/g, "").replace(/✅/g, "").replace(/⏳/g, "").trim();
+
+      // Card 1: Details Table
+      autoTable(doc, {
+        startY: 34,
+        body: [
+          ["          SITE NAME", siteName.toUpperCase()],
+          ["          ENGINEER", (log.technician_name || "SHAIKH WAZAHUL").toUpperCase()],
+          ["          JOB TYPE", (log.service_type || "ROUTINE SERVICE").toUpperCase()],
+          ["          STATUS", cleanStatus]
+        ],
+        theme: 'plain',
+        styles: { fontSize: 8.5, cellPadding: 4, font: "helvetica" },
+        columnStyles: {
+          0: { fillColor: [0, 43, 73], textColor: [255, 255, 255], fontStyle: 'bold', cellWidth: 54 },
+          1: { fillColor: [255, 255, 255], textColor: [0, 43, 73], fontStyle: 'bold' }
+        },
+        didParseCell: (data) => {
+          if (data.row.index === 3 && data.column.index === 1) {
+            const val = data.cell.raw?.toString().toUpperCase();
+            (data.cell.styles as any).charSpace = 1.5; 
+
+            if (val?.includes("COMPLETED") || val?.includes("DONE")) {
+              data.cell.styles.textColor = [16, 185, 129]; 
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val?.includes("PENDING")) {
+              data.cell.styles.textColor = [249, 115, 22]; 
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        },
+        didDrawCell: (data) => {
+          doc.setDrawColor(226, 232, 240).setLineWidth(0.3);
+          doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+
+          if (data.column.index === 0) {
+            const ix = data.cell.x + 3.5;
+            const iy = data.cell.y + (data.cell.height / 2) - 2.5;
+
+            // Icon 0: Location Pin Icon (SITE NAME)
+            if (data.row.index === 0) {
+              doc.setFillColor(255, 255, 255);
+              doc.circle(ix + 2.2, iy + 1.8, 1.8, 'F');
+              doc.triangle(ix + 0.6, iy + 2.2, ix + 3.8, iy + 2.2, ix + 2.2, iy + 4.8, 'F');
+              doc.setFillColor(0, 43, 73);
+              doc.circle(ix + 2.2, iy + 1.8, 0.7, 'F');
+            }
+            // Icon 1: Person / User Icon (ENGINEER)
+            if (data.row.index === 1) {
+              doc.setFillColor(255, 255, 255);
+              doc.circle(ix + 2.2, iy + 1.4, 1.3, 'F');
+              doc.roundedRect(ix + 0.5, iy + 3.1, 3.4, 2, 0.8, 0.8, 'F');
+            }
+            // Icon 2: Wrench / Tool Icon (JOB TYPE)
+            if (data.row.index === 2) {
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.65);
+              doc.line(ix + 0.8, iy + 4.2, ix + 3.6, iy + 1.2);
+              doc.circle(ix + 3.5, iy + 1.3, 1, 'S');
+            }
+            // Icon 3: Checkmark Capsule Icon (STATUS)
+            if (data.row.index === 3) {
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.4).setFillColor(0, 43, 73);
+              doc.roundedRect(ix + 0.2, iy + 0.8, 4.4, 3.4, 1.7, 1.7, 'S');
+              doc.line(ix + 1.2, iy + 2.5, ix + 2, iy + 3.2);
+              doc.line(ix + 2, iy + 3.2, ix + 3.4, iy + 1.7);
+            }
+          }
+        },
+        didDrawPage: (data) => {
+          const finalY = (data as any).cursor?.y || 80;
+          doc.setDrawColor(203, 213, 225).setLineWidth(0.4);
+          doc.roundedRect(14, 34, 182, finalY - 34, 2, 2, 'S');
+        }
+      });
+
+      const card1Bottom = (doc as any).lastAutoTable.finalY || 80;
+
+      // Card 2: Remarks Box
+      const remarksStartY = card1Bottom + 7;
+      const remarksText = log.remarks || "CCTV camera aur DVR sab bether tareeke se chal raha hai.\nMazjide Aksha ka 1st floor, second PV switch kharab tha.\nUse change kiya gaya.";
+      const remarkLines = remarksText.split('\n').filter((l: string) => l.trim().length > 0);
+      const cardHeight = Math.max(26, 12 + (remarkLines.length * 7.5));
+
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(203, 213, 225).setLineWidth(0.4);
+      doc.roundedRect(14, remarksStartY, 182, cardHeight, 2, 2, 'FD');
+
+      doc.setFillColor(0, 43, 73);
+      doc.roundedRect(14, remarksStartY - 3, 33, 7.5, 1.5, 1.5, 'F');
+      doc.setTextColor(255, 255, 255).setFontSize(7.5).setFont("helvetica", "bold").text("REMARKS", 30.5, remarksStartY + 2.2, { align: "center" });
+
+      let textPosY = remarksStartY + 10;
+      doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(15, 23, 42);
+
+      remarkLines.forEach((line: string) => {
+        doc.setFillColor(0, 43, 73);
+        doc.circle(22, textPosY - 1, 0.9, 'F');
+        const splitText = doc.splitTextToSize(line.trim(), 165);
+        doc.text(splitText, 26, textPosY);
+        textPosY += (splitText.length * 5) + 2.5;
+      });
+
+      const card2Bottom = remarksStartY + cardHeight;
+
+      // Card 3: Work Description, Date & Next Schedule
+      const nextScheduleFormatted = log.next_service_date 
+        ? new Date(log.next_service_date).toLocaleDateString('en-GB') 
+        : "NON-AMC (ON-CALL SERVICE)";
+
+      const createdDateFormatted = new Date(log.created_at || Date.now()).toLocaleDateString('en-GB');
+
+      autoTable(doc, {
+        startY: card2Bottom + 6,
+        body: [
+          ["          WORK DESCRIPTION", log.work_done || "Routine inspection carried out; no service required."],
+          ["          DATE", createdDateFormatted],
+          ["          NEXT SCHEDULE", nextScheduleFormatted]
+        ],
+        theme: 'plain',
+        styles: { fontSize: 8.5, cellPadding: 4, font: "helvetica" },
+        columnStyles: {
+          0: { fillColor: [255, 255, 255], textColor: [0, 43, 73], fontStyle: 'bold', cellWidth: 54 },
+          1: { fillColor: [255, 255, 255], textColor: [15, 23, 42], fontStyle: 'normal' }
+        },
+        didParseCell: (data) => {
+          if (data.row.index === 2 && data.column.index === 1) {
+            if (!log.next_service_date) {
+              data.cell.styles.textColor = [180, 83, 9]; 
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = [15, 23, 42];
+            }
+          }
+        },
+        didDrawCell: (data) => {
+          doc.setDrawColor(226, 232, 240).setLineWidth(0.3);
+          doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+
+          if (data.column.index === 0) {
+            const ix = data.cell.x + 3.5;
+            const iy = data.cell.y + (data.cell.height / 2) - 2.5;
+
+            // Icon 0: Wrench / Spanner Icon (WORK DESCRIPTION)
+            if (data.row.index === 0) {
+              doc.setFillColor(0, 43, 73);
+              doc.circle(ix + 2.3, iy + 2.3, 2.3, 'F');
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.5);
+              doc.line(ix + 1, iy + 3.5, ix + 3.5, iy + 1);
+            }
+            // Icon 1: Calendar Grid Icon (DATE)
+            if (data.row.index === 1) {
+              doc.setFillColor(0, 43, 73);
+              doc.circle(ix + 2.3, iy + 2.3, 2.3, 'F');
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.3);
+              doc.rect(ix + 1, iy + 1, 2.6, 2.6, 'S');
+              doc.line(ix + 1, iy + 1.8, ix + 3.6, iy + 1.8);
+            }
+            // Icon 2: Clock / Schedule Icon (NEXT SCHEDULE)
+            if (data.row.index === 2) {
+              doc.setFillColor(0, 43, 73);
+              doc.circle(ix + 2.3, iy + 2.3, 2.3, 'F');
+              doc.setDrawColor(255, 255, 255).setLineWidth(0.35);
+              doc.circle(ix + 2.3, iy + 2.3, 1.4, 'S');
+              doc.line(ix + 2.3, iy + 1.5, ix + 2.3, iy + 2.3);
+              doc.line(ix + 2.3, iy + 2.3, ix + 3, iy + 2.3);
+            }
+          }
+        },
+        didDrawPage: (data) => {
+          const finalY = (data as any).cursor?.y || 142;
+          doc.setDrawColor(203, 213, 225).setLineWidth(0.4);
+          doc.roundedRect(14, card2Bottom + 6, 182, finalY - (card2Bottom + 6), 2, 2, 'S');
+        }
+      });
+
+      const card3Bottom = (doc as any).lastAutoTable.finalY || 142;
+
+      // Card 4: Hardware Metrics
+      const metricsStartY = card3Bottom + 6;
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225).setLineWidth(0.4);
+      doc.roundedRect(14, metricsStartY, 182, 22, 2, 2, 'FD');
+
+      const totalCameras = deviceDetails?.camera_count ?? 12;
+      const totalDevices = deviceDetails?.device_count ?? 2;
+      const totalPower = deviceDetails?.power_count ?? 1;
+      const isResellerVal = deviceDetails?.is_reseller !== false ? "Yes" : "No";
+      
+      const rawCategory = deviceDetails?.category?.toUpperCase() || "DVR/NVR";
+      const displayCategory = rawCategory.length > 10 ? rawCategory.slice(0, 9) : rawCategory;
+
+      // 1. Camera Icon (TOTAL CAMERAS)
+      const c1x = 17;
+      doc.setFillColor(0, 43, 73);
+      doc.roundedRect(c1x, metricsStartY + 5, 5, 3.2, 0.4, 0.4, 'F');
+      doc.circle(c1x + 4.9, metricsStartY + 6.6, 0.9, 'F');
+      doc.setDrawColor(0, 43, 73).setLineWidth(0.4).line(c1x + 1.5, metricsStartY + 8.2, c1x + 0.8, metricsStartY + 9.8);
+      doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("TOTAL CAMERAS", c1x + 8.5, metricsStartY + 7);
+      doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(0, 43, 73).text(String(totalCameras), c1x + 8.5, metricsStartY + 16);
+
+      // 2. Server / Storage Rack Icon (DVR / NVR)
+      const c2x = 56;
+      doc.setDrawColor(0, 43, 73).setLineWidth(0.35).setFillColor(255, 255, 255);
+      doc.roundedRect(c2x, metricsStartY + 4.2, 5.8, 2.2, 0.4, 0.4, 'FD');
+      doc.roundedRect(c2x, metricsStartY + 7, 5.8, 2.2, 0.4, 0.4, 'FD');
+      doc.setFillColor(0, 43, 73);
+      doc.circle(c2x + 4.6, metricsStartY + 5.3, 0.35, 'F');
+      doc.circle(c2x + 4.6, metricsStartY + 8.1, 0.35, 'F');
+      doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text(displayCategory, c2x + 8.5, metricsStartY + 7);
+      doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(0, 43, 73).text(String(totalDevices), c2x + 8.5, metricsStartY + 16);
+
+      // 3. Plug / Power Icon (FED/POWER)
+      const c3x = 97;
+      doc.setFillColor(0, 43, 73);
+      doc.roundedRect(c3x, metricsStartY + 5.2, 4.4, 3.2, 0.5, 0.5, 'F');
+      doc.setDrawColor(0, 43, 73).setLineWidth(0.4);
+      doc.line(c3x + 1.2, metricsStartY + 5.2, c3x + 1.2, metricsStartY + 4);
+      doc.line(c3x + 3.2, metricsStartY + 5.2, c3x + 3.2, metricsStartY + 4);
+      doc.line(c3x + 2.2, metricsStartY + 8.4, c3x + 2.2, metricsStartY + 10);
+      doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("FED/POWER", c3x + 7.5, metricsStartY + 7);
+      doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(0, 43, 73).text(String(totalPower), c3x + 7.5, metricsStartY + 16);
+
+      // 4. Verified Badge Icon (RESELLER)
+      const c4x = 136;
+      doc.setFillColor(0, 43, 73);
+      doc.circle(c4x + 2.5, metricsStartY + 6.5, 2.7, 'F');
+      doc.setDrawColor(255, 255, 255).setLineWidth(0.35);
+      doc.line(c4x + 1.4, metricsStartY + 6.5, c4x + 2.1, metricsStartY + 7.3);
+      doc.line(c4x + 2.1, metricsStartY + 7.3, c4x + 3.6, metricsStartY + 5.5);
+      doc.setFontSize(6).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("RESELLER", c4x + 7.5, metricsStartY + 7);
+      doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(isResellerVal === "Yes" ? 22 : 239, isResellerVal === "Yes" ? 163 : 68, isResellerVal === "Yes" ? 74 : 68).text(isResellerVal, c4x + 7.5, metricsStartY + 16);
+
+      // Vertical Divider
+      doc.setDrawColor(226, 232, 240).line(166, metricsStartY + 2, 166, metricsStartY + 20);
+
+      // QR Code
+      try {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent((COMPANY?.portalUrl || "https://cctvportal.vercel.app/request") + '/' + (log?.device_sn || sn))}`;
+        const qrImg = await getBase64ImageFromURL(qrUrl);
+        if (qrImg) {
+          doc.addImage(qrImg, "PNG", 170, metricsStartY + 2, 15, 15);
+        }
+      } catch {
+        // Safe fallback
+      }
+      doc.setFontSize(4.5).setFont("helvetica", "bold").setTextColor(100, 116, 139).text("SCAN TO VERIFY", 177.5, metricsStartY + 19.5, { align: "center" });
+
+      // 🏢 5. Legal Footer & Dynamic Verification
+      const footerStartY = metricsStartY + 26;
+      doc.setDrawColor(226, 232, 240).line(14, footerStartY, pageWidth - 14, footerStartY);
+
+      // Left Column: Legal Disclaimer
+      doc.setFontSize(6.5).setFont("helvetica", "bold").setTextColor(0, 43, 73).text("LEGAL DISCLAIMER:", 14, footerStartY + 5);
+      doc.setFontSize(5.5).setFont("helvetica", "normal").setTextColor(100, 116, 139);
+      doc.text("This is a system-verified digital report issued by Modern Enterprises.", 14, footerStartY + 9);
+      doc.text(`Support: ${COMPANY?.supportEmail || "me.ce407@gmail.com"}`, 14, footerStartY + 13);
+      doc.text("This document is electronically generated and receives no physical signature.", 14, footerStartY + 17);
+
+      // Right Column: Dynamic Verification Details
+      const rawDeviceSn = log?.device_sn || sn || "SEC-MOD-cial";
+      const slicedPortalId = rawDeviceSn.length >= 8 ? rawDeviceSn.slice(-8).slice(0, 4) : rawDeviceSn.slice(0, 4);
+      const verifiedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      doc.setFontSize(7).setTextColor(15, 23, 42).setFont("helvetica", "bold").text(`Verified On: ${verifiedDate}`, pageWidth - 14, footerStartY + 6, { align: "right" });
+      doc.setFontSize(6.5).setTextColor(100, 116, 139).setFont("helvetica", "normal").text(`Portal ID: SEC-MOD-${slicedPortalId.toUpperCase()}`, pageWidth - 14, footerStartY + 11, { align: "right" });
+      doc.setFontSize(7.5).setTextColor(161, 98, 7).setFont("helvetica", "bold").text("ORIGINAL REPORT", pageWidth - 14, footerStartY + 17, { align: "right" });
+
+      // 6. Bottom Navy Ribbon
+      doc.setFillColor(0, 43, 73);
+      doc.rect(0, pageHeight - 7, pageWidth, 7, 'F');
+      doc.setTextColor(255, 255, 255).setFontSize(6.5).setFont("helvetica", "bold");
+      doc.text(`© 2026 MODERN ENTERPRISES   |   DIGITAL MAINTENANCE SYSTEM`, pageWidth / 2, pageHeight - 2.5, { align: "center" });
+
+      doc.save(`Slip_${siteName}.pdf`);
+    } catch (e) { console.error(e); }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="animate-in fade-in fixed inset-0 z-[999] flex items-stretch justify-center bg-slate-900/60 p-0 backdrop-blur-md duration-300 sm:items-center sm:p-4">
+        <div 
+          style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+          className="animate-in slide-in-from-bottom relative flex w-full max-w-xl flex-col overflow-hidden border border-white/40 bg-white shadow-2xl duration-500 sm:h-auto sm:max-h-[90vh] sm:rounded-[45px]"
+        >
+          {/* 🏗️ MODULAR SECTION 1: HEADER BLOCK */}
+          <ModalHeader 
+            siteName={siteName} 
+            logsCount={logs.length} 
+            onClose={onClose} 
+            onDownloadMaster={downloadMasterPDF} 
+          />
+
+          {/* 📝 MODULAR SECTION 2: MAIN SCROLLABLE BODY */}
+          <ModalMainBody 
+            loading={loading} 
+            logs={logs} 
+            onPrintReceipt={downloadSingleReceipt} 
+          />
+
+          {/* 🏗️ MODULAR SECTION 3: FOOTER BRANDING BLOCK */}
+          <ModalFooter />
+          
+        </div>
+      </div>
+
+      <MasterDialog 
+        isOpen={dialog.isOpen} 
+        onClose={() => setDialog(prev => ({ ...prev, isOpen: false }))} 
+        onConfirm={() => setDialog(prev => ({ ...prev, isOpen: false }))} 
+        title={dialog.title} 
+        message={dialog.message} 
+        type={dialog.type} 
+      />
+
+      <style jsx global>{`
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+      `}</style>
+    </>
+  );
+}
+
+// ==========================================
+// 🛠️ SUB-COMPONENTS SECTIONS FOR EASY EDITING
+// ==========================================
+
+function ModalHeader({ siteName, logsCount, onClose, onDownloadMaster }: any) {
+  return (
+    <header className="sticky top-0 z-[110] flex shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 p-6 backdrop-blur-xl">
+      <div className="text-left">
+        <h2 className="flex items-center gap-2 text-xl leading-none font-[1000] tracking-tighter text-slate-800 uppercase italic">
+          <ClipboardList className="text-blue-600" size={24} /> Service History
+        </h2>
+        <p className="mt-2 max-w-[200px] truncate font-black tracking-[5px] text-[10px] text-blue-500 uppercase">{siteName}</p>
+      </div>
+      <div className="flex gap-2">
+        {logsCount > 0 && (
+          <button onClick={onDownloadMaster} className="flex items-center justify-center rounded-2xl border-b-4 border-slate-700 bg-slate-900 p-3 text-white shadow-lg transition-all active:scale-95 active:border-b-0">
+            <FileText size={18} />
+          </button>
+        )}
+        <button onClick={onClose} className="flex items-center justify-center rounded-2xl border-2 border-b-4 border-slate-100 bg-slate-50 p-3 text-slate-400 transition-all active:scale-95 active:border-b-0">
+          <X size={20} strokeWidth={3} />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function ModalMainBody({ loading, logs, onPrintReceipt }: any) {
+  return (
+    <main className="custom-scroll flex-1 space-y-5 overflow-y-auto scroll-smooth bg-slate-50/40 p-5 pb-32 sm:p-8">
+      {loading ? (
+        <div className="flex flex-col items-center gap-4 py-32">
+          <Loader2 className="animate-spin text-blue-600" size={40} />
+          <p className="font-black tracking-[5px] text-[10px] text-slate-400 uppercase">Syncing Records</p>
+        </div>
+      ) : logs.length > 0 ? (
+        logs.map((log: any) => (
+          <div key={log.id} className="group relative rounded-[35px] border-2 border-slate-100 bg-white p-6 text-left shadow-sm transition-all hover:shadow-md">
+            <div className="mb-5 flex items-center justify-between">
+              <span className="flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 leading-none font-[1000] tracking-tight text-[10px] text-blue-600 uppercase">
+                <Calendar size={12} /> {new Date(log.created_at).toLocaleDateString('en-GB')}
+              </span>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onPrintReceipt(log); }} 
+                className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border-2 border-emerald-100 border-b-4 active:border-b-0 active:scale-95 transition-all flex items-center justify-center"
+              >
+                <Printer size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="rounded-[20px] border border-slate-100 bg-slate-50 p-3 text-slate-400"><User size={16} /></div>
+                <div>
+                  <p className="leading-none font-black tracking-[2px] text-slate-400 text-[9px] uppercase">Service Engineer</p>
+                  <p className="mt-1.5 text-base leading-none font-black text-slate-800 uppercase">{log.technician_name}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 rounded-[20px] border border-orange-100 bg-orange-50 p-3 text-orange-500"><Wrench size={16} /></div>
+                <div className="flex-1">
+                  <p className="leading-none font-black tracking-[2px] text-slate-400 text-[9px] uppercase">Job Summary</p>
+                  <div className="mt-2 rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-sm leading-relaxed font-bold text-slate-700">
+                    {log.work_done}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                 <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                    <p className="font-black tracking-widest text-[8px] text-slate-400 uppercase">Job Type</p>
+                    <p className="mt-1 font-bold text-[10px] text-slate-700 uppercase">{log.service_type || "Routine"}</p>
+                 </div>
+                 <div className={`p-3 rounded-2xl border ${log.status?.includes('Completed') || log.status?.includes('✅') ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
+                    <p className="font-black tracking-widest text-[8px] uppercase opacity-60">Status</p>
+                    <p className="mt-1 font-bold text-[10px] uppercase">{log.status || "Completed"}</p>
+                 </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 rounded-[20px] bg-purple-50 p-3 text-purple-600"><MessageSquare size={16} /></div>
+                <div>
+                  <p className="leading-none font-black tracking-[2px] text-slate-400 text-[9px] uppercase">Technician Remarks</p>
+                  <p className="mt-2 text-sm leading-relaxed font-bold text-slate-600 italic">"{log.remarks || 'Routine maintenance completed.'}"</p>
+                </div>
+              </div>
+
+              {log.next_service_date ? (
+                <div className="flex cursor-pointer items-center justify-between rounded-[30px] border-b-4 border-emerald-800 bg-emerald-600 p-4 text-white shadow-lg shadow-emerald-100 transition-all active:translate-y-[2px] active:scale-95 active:border-b-0">
+                  <div className="flex items-center gap-3">
+                    <Clock size={18} />
+                    <div>
+                      <p className="leading-none font-black text-[8px] uppercase opacity-70">Next Visit</p>
+                      <p className="mt-1 text-xs font-black uppercase">Maintenance Due</p>
+                    </div>
+                  </div>
+                  <span className="text-base font-[1000] italic">{new Date(log.next_service_date).toLocaleDateString('en-GB')}</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-[30px] border border-amber-200 bg-amber-50/80 p-4 text-amber-800 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <PhoneCall size={18} className="text-amber-600" />
+                    <div>
+                      <p className="leading-none font-black text-[8px] uppercase opacity-70">Support Plan</p>
+                      <p className="mt-1 text-xs font-black uppercase">Non-AMC (On-Call Service)</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-amber-200/60 px-3 py-1 text-xs font-bold tracking-wider text-amber-900 uppercase">On-Demand</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="flex flex-col items-center gap-4 py-24 text-center opacity-30">
+           <AlertCircle size={48} className="text-slate-400" />
+           <p className="font-black tracking-[5px] text-[10px] uppercase">Zero Records Found</p>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function ModalFooter() {
+  return (
+    <footer className="shrink-0 bg-white pt-2 pb-8">
+      <p className="text-center text-xs leading-none font-[1000] tracking-tighter text-slate-400 uppercase italic">
+         <span>
+          {(COMPANY?.app?.name || "Cctv Portal").split(' ')[0]}
+         </span>
+         <span className="ml-1 text-blue-600 italic">
+          {(COMPANY?.app?.name || "Cctv Portal").split(' ')[1] || ""}
+         </span>
+         <span className="ml-2 font-black tracking-[2px] text-slate-300 text-[10px] italic">
+          {COMPANY?.app?.version || "v2.0"}
+         </span>
+      </p>
+    </footer>
+  );
+}

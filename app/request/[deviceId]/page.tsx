@@ -1,0 +1,380 @@
+﻿"use client";
+
+// app/request/[deviceId]/page.tsx
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { COMPANY } from "@/lib/config";
+import { 
+  Loader2, Lock, Timer, History as HistoryIcon, 
+  Smartphone, MessageSquare, HelpCircle, CheckCircle2, XCircle,
+  AlertTriangle, PhoneCall, ShieldCheck, ShieldAlert, Clock
+} from "lucide-react";
+import HistoryModal from "../../admin/HistoryModal";
+import MasterDialog from "@/lib/components/MasterDialog";
+import PermissionGate from "@/lib/components/PermissionGate";
+
+export default function RequestPage() {
+  const params = useParams();
+  const deviceId = params.deviceId as string; 
+
+  const [device, setDevice] = useState<any>(null);
+  const [isAmcActive, setIsAmcActive] = useState<boolean>(false);
+  const [amcExpiryDate, setAmcExpiryDate] = useState<string | null>(null);
+  const [daysCount, setDaysCount] = useState<number>(0);
+  const [mobile, setMobile] = useState("");
+  const [message, setMessage] = useState("");
+  const [inRange, setInRange] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [reqLoading, setReqLoading] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0); 
+  const [dialog, setDialog] = useState({ isOpen: false, title: "", message: "", type: "info" as any });
+
+  useEffect(() => {
+    const init = async () => {
+      // 1. Session check
+      const { data: { session } } = await supabase.auth.getSession();
+      const role = session?.user?.user_metadata?.role;
+      const authorized = role === "super_admin" || role === "engineer";
+      setIsAuthorized(authorized);
+
+      // 2. Fetch Device from Supabase
+      const { data: dev } = await supabase
+        .from("devices")
+        .select("*")
+        .eq("device_sn", deviceId)
+        .single();
+
+      if (dev) {
+        setDevice(dev);
+
+        // 🛡️ STRICT 365-DAY AMC VALIDATION LOGIC
+        let amcStatus = false;
+        let calculatedExpiryIso = null;
+        let calculatedDays = 0;
+
+        if (dev.is_reseller === true && dev.last_maintenance) {
+          const startDate = new Date(dev.last_maintenance);
+          
+          if (!isNaN(startDate.getTime())) {
+            // Expiry Date = Start Date + 365 Days
+            const expiryDate = new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
+            calculatedExpiryIso = expiryDate.toISOString();
+
+            const today = new Date();
+            const diffTime = expiryDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 0) {
+              // 365 din ke andar hai -> AMC Active
+              amcStatus = true;
+              calculatedDays = diffDays;
+            } else {
+              // 365 din se zyada ho gaye -> AMC Expired
+              amcStatus = false;
+              calculatedDays = Math.abs(diffDays);
+            }
+          }
+        }
+
+        setIsAmcActive(amcStatus);
+        setAmcExpiryDate(calculatedExpiryIso);
+        setDaysCount(calculatedDays);
+
+        if (authorized) { 
+          setInRange(true); 
+          setLoading(false); 
+          return; 
+        }
+
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const R = 6371000;
+              const dLat = (dev.latitude - pos.coords.latitude) * Math.PI / 180;
+              const dLon = (dev.longitude - pos.coords.longitude) * Math.PI / 180;
+              const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(pos.coords.latitude * Math.PI/180) * Math.cos(dev.latitude * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+              const distance = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+              setInRange(distance <= (dev.radius || 200));
+              setLoading(false);
+            }, 
+            () => { setInRange(false); setLoading(false); }, 
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        } else { 
+          setInRange(false); 
+          setLoading(false); 
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+    init();
+  }, [deviceId]);
+
+  useEffect(() => {
+    if (cooldownTime > 0) {
+      const timer = setInterval(() => setCooldownTime(p => p - 1), 1000);
+      return () => clearInterval(timer);
+    }
+  }, [cooldownTime]);
+
+  const handleRequest = async () => {
+    if (mobile.length !== 10) {
+      setDialog({ isOpen: true, title: "Invalid", message: "Please enter a valid 10-digit number.", type: "warning" });
+      return;
+    }
+    setReqLoading(true);
+
+    try {
+      const currentLocalTime = new Intl.DateTimeFormat('en-IN', {
+        dateStyle: 'medium', timeStyle: 'medium', timeZone: 'Asia/Kolkata',
+      }).format(new Date());
+
+      const res = await fetch("/api/request-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          mobile, 
+          device_id: deviceId, 
+          message: message || "Password Request",
+          date_time: currentLocalTime,
+          is_authorized: isAuthorized,
+          is_amc_active: isAmcActive
+        }),
+      });
+
+      const result = await res.json();
+      if (!result.success) {
+        if (result.wait) setCooldownTime(result.wait);
+        setDialog({ isOpen: true, title: "Blocked", message: result.error, type: "danger" });
+      } else {
+        setDialog({ isOpen: true, title: "Success", message: "Request sent successfully. You will be contacted via WhatsApp.", type: "success" });
+        setMobile(""); setMessage(""); setIsFormOpen(false);
+      }
+    } catch (err: any) {
+      setDialog({ isOpen: true, title: "Error", message: "Dispatch failed. Please check your connection.", type: "danger" });
+    } finally { setReqLoading(false); }
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" /></div>;
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F1F5F9] p-4 text-left sm:p-6">
+      <PermissionGate />
+      
+      <div className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[45px] border border-white bg-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500">
+        
+        {/* Header Bar */}
+        <div className="border-b border-blue-50 bg-[#d5e0dd] px-6 pt-8 pb-6 text-center">
+          <h1 className="truncate px-2 text-2xl leading-none font-[1000] tracking-tighter text-slate-900 uppercase italic sm:text-3xl">
+            {device?.site_name || "Device Portal"}
+          </h1>
+          
+          <div className="mt-3 flex items-center justify-center gap-2">
+            {inRange ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+                <CheckCircle2 size={13} className="animate-pulse text-emerald-600" />
+                <span className="font-bold tracking-wider text-[8.5pt] uppercase">GPS In Range</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">
+                <XCircle size={13} className="text-red-600" />
+                <span className="font-bold tracking-wider text-[8.5pt] uppercase">Out of Range</span>
+              </div>
+            )}
+
+            {/* AMC Status Pill */}
+            {isAmcActive ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">
+                <ShieldCheck size={13} className="text-blue-600" />
+                <span className="font-black tracking-wider text-[8.5pt] uppercase">AMC Active</span>
+                <span className="font-bold text-[7.5pt] text-blue-500">({daysCount}d left)</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
+                <ShieldAlert size={13} className="text-amber-600" />
+                <span className="font-black tracking-wider text-[8.5pt] uppercase">Non-AMC</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Body */}
+        <div className="space-y-6 p-7">
+          {inRange ? (
+            <div className="space-y-6">
+              
+              {/* ⚠️ NON-AMC / EXPIRED ALERT BOX */}
+              {!isAmcActive && (
+                <div className="animate-in fade-in slide-in-from-top-3 overflow-hidden rounded-[32px] border-2 border-amber-200 bg-gradient-to-b from-amber-50/90 to-amber-100/50 p-6 text-left shadow-lg shadow-amber-500/5 duration-300">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/15 text-amber-600 shadow-sm">
+                      <AlertTriangle size={22} className="stroke-[2.5]" />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <h3 className="text-sm font-[1000] tracking-tight text-amber-950 uppercase italic">
+                        AMC INACTIVE / UNPROTECTED SYSTEM
+                      </h3>
+                      
+                      <p className="mt-2 leading-relaxed font-medium text-amber-900/90 text-[10.5pt]">
+                        System active maintenance contract mein nahi hai. Unplanned visits aur emergency resets par standard charges apply honge. Zero visit charges aur priority support ke liye abhi AMC active karein.
+                      </p>
+
+                      {/* 🚩 Expired On: Sirf tabhi show hoga jab is_reseller === true ho aur amcExpiryDate ho */}
+                      {device?.is_reseller === true && amcExpiryDate && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/40 bg-amber-200/50 px-3 py-1 font-bold text-[8.5pt] text-amber-900">
+                            <span>Expired On:</span>
+                            <span className="font-black text-amber-950">
+                              {new Date(amcExpiryDate).toLocaleDateString("en-GB")}
+                            </span>
+                          </div>
+                          {daysCount > 0 && (
+                            <span className="rounded-xl border border-red-200 bg-red-100 px-2.5 py-1 font-black tracking-wider text-[8pt] text-red-700 uppercase">
+                              ({daysCount} Days Ago)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-2.5 border-t border-amber-200/60 pt-3">
+                    <a
+                      href={`tel:${COMPANY?.contact || "+917021330886"}`}
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-3 py-3.5 text-center font-[1000] tracking-wider text-white text-[9pt] uppercase shadow-md shadow-amber-600/20 transition-all hover:bg-amber-700 active:scale-95"
+                    >
+                      <PhoneCall size={14} className="stroke-[2.5]" />
+                      <span>Call Support</span>
+                    </a>
+
+                    <a
+                      href={`https://wa.me/${(COMPANY?.contact || "917021330886").replace(/\D/g, "")}?text=${encodeURIComponent(
+                        `Hello Modern Enterprises, I want to renew/activate AMC for Site: ${device?.site_name || "N/A"} (SN: ${deviceId})`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-2xl border border-amber-300/80 bg-white px-3 py-3.5 text-center font-[1000] tracking-wider text-amber-950 text-[9pt] uppercase shadow-sm transition-all hover:bg-amber-50 active:scale-95"
+                    >
+                      <MessageSquare size={14} className="stroke-[2.5] text-emerald-600" />
+                      <span>WhatsApp AMC</span>
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Standard Request & History Buttons */}
+              {!isFormOpen ? (
+                <div className="animate-in fade-in grid grid-cols-2 gap-4 duration-500">
+                  <button 
+                    onClick={() => setIsFormOpen(true)} 
+                    className="flex flex-col items-center p-7 bg-slate-50 rounded-[35px] border-2 border-slate-100 active:scale-95 transition-all group shadow-sm hover:bg-white hover:border-blue-200"
+                  >
+                    <div className="mb-3 rounded-2xl bg-blue-100 p-3.5 text-blue-600 transition-all group-hover:bg-blue-600 group-hover:text-white">
+                      <HelpCircle size={26} />
+                    </div>
+                    <span className="text-center leading-tight font-black tracking-widest text-[9pt] text-slate-700 uppercase">
+                      Request<br/>Support
+                    </span>
+                  </button>
+
+                  <button 
+                    onClick={() => setIsHistoryOpen(true)} 
+                    className="flex flex-col items-center p-7 bg-slate-50 rounded-[35px] border-2 border-slate-100 active:scale-95 transition-all group shadow-sm hover:bg-white hover:border-emerald-200"
+                  >
+                    <div className="mb-3 rounded-2xl bg-emerald-100 p-3.5 text-emerald-600 transition-all group-hover:bg-emerald-600 group-hover:text-white">
+                      <HistoryIcon size={26} />
+                    </div>
+                    <span className="text-center leading-tight font-black tracking-widest text-[9pt] text-slate-700 uppercase">
+                      Maintenance<br/>History
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <div className="animate-in slide-in-from-top-4 space-y-4 rounded-[35px] border border-slate-100 bg-slate-50/80 p-5 duration-500">
+                  <div className="flex items-center gap-2 px-1">
+                    <Timer size={14} className="animate-pulse text-blue-500" />
+                    <span className="font-black tracking-[3px] text-[9.5pt] text-slate-500 uppercase italic">
+                      Service Dispatch Request
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <Smartphone className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500" size={17} />
+                    <input 
+                      type="tel" maxLength={10} placeholder="WhatsApp Number" 
+                      className="w-full rounded-[20px] border-2 border-slate-100 bg-white py-3.5 pr-4 pl-11 text-xs font-black shadow-inner transition-all outline-none focus:border-blue-500"
+                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} value={mobile}
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <MessageSquare className="absolute top-3.5 left-4 text-slate-300 group-focus-within:text-emerald-500" size={17} />
+                    <textarea 
+                      placeholder="Enter requirement or problem details..." rows={2}
+                      className="w-full resize-none rounded-[20px] border-2 border-slate-100 bg-white py-3.5 pr-4 pl-11 text-xs font-bold shadow-inner transition-all outline-none focus:border-blue-500"
+                      onChange={(e) => setMessage(e.target.value)} value={message}
+                    />
+                  </div>
+
+                  {cooldownTime > 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-[22px] border-2 border-dashed border-orange-100 bg-orange-50 p-3.5">
+                        <p className="mb-0.5 font-black tracking-widest text-[8pt] text-orange-600 uppercase italic">Cooldown Active</p>
+                        <p className="text-lg font-[1000] tracking-tighter text-orange-600">{formatTime(cooldownTime)}</p>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={handleRequest} 
+                      disabled={reqLoading || mobile.length < 10}
+                      className="w-full rounded-[22px] border-b-4 border-blue-900 bg-blue-600 py-4 font-[1000] tracking-[3px] text-white text-[10.5pt] uppercase italic shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {reqLoading ? <Loader2 className="mx-auto animate-spin" size={18} /> : "Submit Request"}
+                    </button>
+                  )}
+                  <button onClick={() => setIsFormOpen(false)} className="w-full text-[9pt] font-black text-slate-400 uppercase tracking-[2px] pt-1">Go Back</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-5 py-8 text-center">
+               <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-full border-4 border-white bg-red-50 shadow-lg">
+                  <XCircle size={36} className="text-red-500" />
+               </div>
+              <h2 className="text-lg font-black text-slate-800 uppercase italic">Out of Range</h2>
+              <p className="mt-1 px-4 leading-relaxed font-bold tracking-[3px] text-slate-400 text-[9pt] uppercase"> 
+                Please be present at the site to sync GPS. 
+              </p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-slate-900 text-white px-8 py-4 rounded-[20px] font-black uppercase text-[9pt] tracking-widest active:scale-90 transition-all border-b-4 border-black"
+              >
+                Retry GPS Sync
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Branding */}
+        <div className="border-t border-slate-50 pt-5 pb-8 text-center">
+          <p className="font-black tracking-[2px] text-[8pt] text-slate-400 uppercase italic">
+            {COMPANY?.branding?.tagline2 || "SECURITY SOLUTIONS & INTERIOR DECORATOR"}
+          </p>
+        </div>
+      </div>
+
+      <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} sn={deviceId} siteName={device?.site_name} />
+      <MasterDialog isOpen={dialog.isOpen} onClose={() => setDialog(p => ({...p, isOpen: false}))} onConfirm={() => setDialog(p => ({...p, isOpen: false}))} title={dialog.title} message={dialog.message} type={dialog.type} confirmText="OK" />
+    </div>
+  );
+}

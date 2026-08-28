@@ -1,0 +1,142 @@
+"use client";
+// aap/lib/components/AuthGuard.tsx
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { Loader2, ShieldAlert, Lock } from "lucide-react";
+
+interface AuthGuardProps {
+  children: React.ReactNode;
+  allowedRoles?: string[]; 
+}
+
+export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
+  
+  // 🛡️ 35 Saal ka Tajarba: Multiple simultaneous calls ko rokne ke liye Ref
+  const isChecking = useRef(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    // Browser Scroll Control
+    document.body.style.overflow = authorized ? 'unset' : 'hidden';
+
+    const checkUser = async () => {
+      // 🚫 Race Condition Fix: Agar check pehle se chal raha hai, toh doosri call block karein
+      if (isChecking.current) return;
+      isChecking.current = true;
+
+      try {
+        // 1. Current Session Check (Fastest)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isActive) return;
+
+        if (sessionError || !session) {
+          console.warn("AuthGuard: Session Missing - Redirecting");
+          router.replace("/login");
+          return;
+        }
+
+        // 2. Server-Side Verification (Securest)
+        // ✅ Yahan "Lock stolen" error aata tha, Ref aur isActive usey fix kar dega
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (!isActive) return;
+
+        if (userError || !user) {
+          console.error("AuthGuard: User verification failed");
+          await supabase.auth.signOut();
+          router.replace("/login");
+          return;
+        }
+
+        // 🔐 ROLE-BASED ACCESS CHECK
+        if (allowedRoles && allowedRoles.length > 0) {
+          // Check both standard metadata paths
+          const userRole = user.user_metadata?.role || (user as any).raw_user_meta_data?.role || "user";
+          
+          if (!allowedRoles.includes(userRole)) {
+            console.warn(`AuthGuard: Role ${userRole} is not authorized for this node.`);
+            if (isActive) setErrorStatus("ACCESS_DENIED");
+            // 2.5 second wait for UX, then redirect
+            setTimeout(() => {
+              if (isActive) router.replace("/admin");
+            }, 2500);
+            return;
+          }
+        }
+
+        // ✅ Everything Clear!
+        if (isActive) setAuthorized(true);
+
+      } catch (err) {
+        console.error("Critical AuthGuard Error:", err);
+        if (isActive) router.replace("/login");
+      } finally {
+        // Lock release karein
+        isChecking.current = false;
+      }
+    };
+
+    checkUser();
+
+    // 🔄 REALTIME AUTH LISTENER
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isActive) return;
+      if (event === "SIGNED_OUT" || !session) {
+        setAuthorized(false);
+        router.replace("/login");
+      }
+    });
+
+    return () => {
+      isActive = false;
+      isChecking.current = false;
+      document.body.style.overflow = 'unset';
+      subscription.unsubscribe();
+    };
+  }, [router, allowedRoles, authorized]);
+
+  // 🚫 1. Access Denied View
+  if (errorStatus === "ACCESS_DENIED") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffafa] p-6 text-center">
+        <div className="bg-red-50 p-6 rounded-[35px] border-2 border-red-100 shadow-2xl shadow-red-100/50 animate-in zoom-in duration-500">
+          <ShieldAlert size={60} className="text-red-500 mb-6 mx-auto animate-pulse" />
+          <h2 className="text-2xl font-[1000] text-red-900 uppercase italic tracking-tighter leading-none">Access Denied</h2>
+          <div className="h-1 w-20 bg-red-200 mx-auto my-4 rounded-full"></div>
+          <p className="text-slate-500 font-black text-[11px] uppercase tracking-widest leading-relaxed">
+            Aapke paas is secure node <br/> ko access karne ki permission nahi hai.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ⏳ 2. Loading View (Branding Style)
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white overflow-hidden">
+        <div className="relative">
+          <Loader2 className="animate-spin text-blue-600 mb-8" size={54} strokeWidth={2.5} />
+          <Lock className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[70%] text-blue-100" size={18} />
+        </div>
+        <p className="font-[1000] text-slate-900 text-[11px] uppercase tracking-[6px] italic animate-pulse">
+          Securely Verifying Node...
+        </p>
+        <div className="mt-4 flex gap-1">
+          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+          <div className="w-1.5 h-1.5 bg-blue-200 rounded-full animate-bounce"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🏗️ 3. Main Content Render
+  return <>{children}</>;
+}
