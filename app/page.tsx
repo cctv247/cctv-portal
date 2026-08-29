@@ -10,7 +10,7 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center bg-slate-900">
       <div className="w-80 max-w-md rounded-xl bg-white/10 p-8 text-center backdrop-blur-lg">
 
-        <h1 className="mb-5 text-2xl font-semibold text-white">CCTV System222222</h1>
+        <h1 className="mb-5 text-2xl font-semibold text-white">CCTV System</h1>
 
         {/* Engineer Button */}
         <button
