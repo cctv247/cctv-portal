@@ -29,7 +29,7 @@ export default function PrintStickersPage() {
   const company = COMPANY;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-900 font-sans print:min-h-0 print:overflow-visible print:bg-white">
+    <div className="min-h-screen overflow-x-hidden bg-slate-900 font-sans print:overflow-visible print:bg-white">
       <div className="a4-container mx-auto">
         {items.length > 0
           ? items.map((device, index) => (
@@ -38,7 +38,7 @@ export default function PrintStickersPage() {
                 className={`sticker-slot ${(index + 1) % 4 === 0 ? "page-break-after" : ""}`}
               >
                 <div
-                  className="sticker-card relative flex h-full w-full flex-col overflow-hidden rounded-[22px] border-[2.2pt] border-[#1a4a8d] bg-white shadow-xl print:rounded-[20px] print:border-[2pt] print:border-[#1a4a8d] print:shadow-none"
+                  className="sticker-card relative flex h-full w-full flex-col overflow-hidden rounded-[26px] border-[2.5pt] border-[#1a4a8d] bg-white shadow-2xl print:border-[#1a4a8d] print:shadow-none"
                   style={{
                     WebkitPrintColorAdjust: "exact",
                     printColorAdjust: "exact",
@@ -46,25 +46,25 @@ export default function PrintStickersPage() {
                 >
                   {/* Header */}
                   <div
-                    className="flex shrink-0 items-center justify-between bg-[#1a4a8d] px-5 py-3.5 text-white"
+                    className="flex shrink-0 items-center justify-between bg-[#1a4a8d] px-6 py-5 text-white"
                     style={{
                       backgroundColor: "#1a4a8d",
                       WebkitPrintColorAdjust: "exact",
                     }}
                   >
                     <div className="text-left leading-tight">
-                      <h1 className="font-[1000] tracking-tight text-[13.5pt] text-white uppercase italic">
+                      <h1 className="font-[1000] tracking-tight text-[15pt] text-white uppercase italic">
                         Security System
                       </h1>
-                      <h2 className="font-black tracking-[2px] text-[7.5pt] text-white uppercase opacity-90">
+                      <h2 className="font-black tracking-[2px] text-[8pt] text-white uppercase opacity-90">
                         Maintenance
                       </h2>
                     </div>
-                    <Cctv size={30} className="mr-0.5 text-white" />
+                    <Cctv size={35} className="mr-1 text-white" />
                   </div>
 
                   {/* Body with Vector Circuit Background */}
-                  <div className="relative flex flex-1 flex-col items-center justify-between overflow-hidden px-3 pt-1.5 pb-2">
+                  <div className="relative flex flex-1 flex-col items-center justify-between overflow-hidden px-3.5 pt-2 pb-1.5">
                     
                     {/* PCB Circuit Vector */}
                     <svg
@@ -149,68 +149,68 @@ export default function PrintStickersPage() {
                     </svg>
 
                     {/* QR Code Section */}
-                    <div className="relative z-10 mt-1 flex shrink-0 flex-col items-center">
-                      <div className="backdrop-blur-[1px] relative rounded-[14px] border border-blue-200 bg-white/95 p-1.5 shadow-sm">
+                    <div className="relative z-10 mt-10 flex shrink-0 flex-col items-center">
+                      <div className="backdrop-blur-[1px] relative rounded-[16px] border-2 border-blue-200 bg-white/95 p-2 shadow-sm">
                         <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
                             (company?.portalUrl || "") + "/" + (device?.device_sn || "")
                           )}`}
-                          width={130}
-                          height={130}
-                          className="block h-[95pt] w-[95pt]"
+                          width={155}
+                          height={155}
+                          className="block h-[115pt] w-[115pt]"
                           alt="QR Code"
                         />
-                        <div className="absolute -top-1 -left-1 h-5 w-5 rounded-tl-lg border-[#1a4a8d] border-t-[3.5px] border-l-[3.5px]"></div>
-                        <div className="absolute -right-1 -bottom-1 h-5 w-5 rounded-br-lg border-[#1a4a8d] border-r-[3.5px] border-b-[3.5px]"></div>
+                        <div className="absolute -top-1 -left-1 h-6 w-6 rounded-tl-xl border-[#1a4a8d] border-t-[4px] border-l-[4px]"></div>
+                        <div className="absolute -right-1 -bottom-1 h-6 w-6 rounded-br-xl border-[#1a4a8d] border-r-[4px] border-b-[4px]"></div>
                       </div>
-                      <p className="mt-1 font-black tracking-[1.5px] text-[5.5pt] text-slate-500 uppercase italic">
+                      <p className="mt-1 font-black tracking-[2px] text-[6pt] text-slate-500 uppercase italic">
                         • SCAN TO VIEW LOGS &amp; REPORTS •
                       </p>
                     </div>
 
                     {/* Site Location & Manual Writing Fields */}
-                    <div className="relative z-10 w-full shrink-0 space-y-2 px-1 text-left">
+                    <div className="relative z-10 w-full shrink-0 space-y-4 px-1 text-left">
                       <div>
-                        <label className="ml-0.5 leading-none font-black tracking-widest text-[6pt] text-slate-600 uppercase">
+                        <label className="ml-0.5 leading-none font-black tracking-widest text-[6.5pt] text-slate-600 uppercase">
                           Site Location
                         </label>
-                        <div className="mt-0.5 w-full border-[#1a4a8d] border-b-[1.5pt] pb-0.5">
-                          <span className="block truncate px-0.5 leading-none font-[1000] text-[9.5pt] text-[#1a4a8d] uppercase italic">
+                        <div className="mt-0.5 w-full border-[#1a4a8d] border-b-[1.8pt] pb-0.5">
+                          <span className="block truncate px-0.5 leading-none font-[1000] text-[10.5pt] text-[#1a4a8d] uppercase italic">
                             {device?.site_name || "---"}
                           </span>
                         </div>
                       </div>
 
                       {/* Service Date & Sign with writing space */}
-                      <div className="grid grid-cols-2 gap-2.5 pt-0.5">
-                        <div className="flex flex-col justify-between border-gray-400 border-b-[1.2pt] pb-0.5">
-                          <label className="ml-0.5 leading-none font-black tracking-widest text-[6pt] text-slate-600 uppercase">
+                      <div className="grid grid-cols-2 gap-3 pt-0.5">
+                        <div className="flex flex-col justify-between border-gray-400 border-b-[1.5pt] pb-0.5">
+                          <label className="ml-0.5 leading-none font-black tracking-widest text-[6.5pt] text-slate-600 uppercase">
                             Service Date
                           </label>
-                          <div className="flex h-5 w-full items-end">
-                            <span className="font-[1000] tracking-wider text-[8.5pt] text-[#1a4a8d] italic">
+                          <div className="flex h-7 w-full items-end">
+                            <span className="font-[1000] tracking-wider text-[9.5pt] text-[#1a4a8d] italic">
                               {device?.service_date
                                 ? new Date(device.service_date).toLocaleDateString("en-GB")
                                 : ""}
                             </span>
                           </div>
                         </div>
-                        <div className="flex flex-col justify-between border-gray-400 border-b-[1.2pt] pb-0.5">
-                          <label className="ml-0.5 leading-none font-black tracking-widest text-[6pt] text-slate-600 uppercase">
+                        <div className="flex flex-col justify-between border-gray-400 border-b-[1.5pt] pb-0.5">
+                          <label className="ml-0.5 leading-none font-black tracking-widest text-[6.5pt] text-slate-600 uppercase">
                             Technician Sign.
                           </label>
-                          <div className="h-5 w-full" />
+                          <div className="h-7 w-full" />
                         </div>
                       </div>
                     </div>
 
                     {/* Branded Footer */}
                     <div className="relative z-10 flex w-full shrink-0 flex-col items-center border-t border-dashed border-gray-300 pt-1">
-                      <h3 className="leading-none font-[1000] tracking-[1.5px] text-[12pt] text-[#1a4a8d] uppercase italic">
+                      <h3 className="leading-none font-[1000] tracking-[2px] text-[14pt] text-[#1a4a8d] uppercase italic">
                         {company?.name || "Modern Enterprises"}
                       </h3>
-                      <div className="mt-0.5 flex items-center gap-1 font-black text-[7.5pt] text-slate-600">
-                        <PhoneCall size={11} className="text-[#1a4a8d]" />
+                      <div className="mt-0.5 flex items-center gap-1 font-black text-[8.5pt] text-slate-600">
+                        <PhoneCall size={12} className="text-[#1a4a8d]" />
                         <span>Support: {company?.contact || "+91 7021330886"}</span>
                       </div>
                     </div>
@@ -226,9 +226,9 @@ export default function PrintStickersPage() {
       <button
         type="button"
         onClick={() => window.print()}
-        className="fixed bottom-8 right-8 z-[999] flex items-center gap-2.5 rounded-full border-b-[5px] border-blue-900 bg-blue-600 px-8 py-3.5 font-[1000] tracking-[2px] text-white uppercase italic shadow-2xl transition-all hover:bg-blue-500 active:scale-95 print:hidden"
+        className="fixed bottom-10 right-10 z-[999] flex items-center gap-3 rounded-full border-b-[6px] border-blue-900 bg-blue-600 px-10 py-4 font-[1000] tracking-[3px] text-white uppercase italic shadow-2xl transition-all hover:bg-blue-500 active:scale-95 print:hidden"
       >
-        <Printer size={20} />
+        <Printer size={22} />
         Print
       </button>
 
@@ -237,29 +237,28 @@ export default function PrintStickersPage() {
           box-sizing: border-box !important;
         }
 
-        /* Screen View (Desktop / Mobile Preview) */
+        /* Screen View */
         .a4-container {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 100mm));
+          grid-template-columns: repeat(2, 105mm);
           justify-content: center;
-          width: 204mm;
-          margin: 15px auto;
-          gap: 2mm;
+          width: 210mm;
+          margin: 20px auto;
         }
 
         .sticker-slot {
-          height: 138mm;
-          width: 100mm;
+          height: 144mm;
+          width: 105mm;
           display: flex;
           justify-content: center;
           align-items: center;
-          padding: 1.5mm;
+          padding: 3mm 4mm;
         }
 
         @media print {
           @page {
             size: A4 portrait;
-            margin: 4mm 3mm 4mm 3mm !important;
+            margin: 7mm 2mm 7mm 2mm !important;
           }
 
           * {
@@ -272,25 +271,22 @@ export default function PrintStickersPage() {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 204mm !important;
-            height: auto !important;
+            width: 210mm !important;
           }
 
           .a4-container {
             display: grid !important;
-            grid-template-columns: 99mm 99mm !important;
-            grid-auto-rows: 139mm !important;
-            justify-content: center !important;
-            gap: 2mm 3mm !important;
-            width: 202mm !important;
+            grid-template-columns: 103mm 103mm !important;
+            grid-auto-rows: 142mm !important;
+            gap: 0 !important;
+            width: 206mm !important;
             margin: 0 auto !important;
-            padding: 0 !important;
           }
 
           .sticker-slot {
-            width: 99mm !important;
-            height: 139mm !important;
-            padding: 1mm !important;
+            width: 103mm !important;
+            height: 142mm !important;
+            padding: 3mm 4mm !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             display: flex !important;
