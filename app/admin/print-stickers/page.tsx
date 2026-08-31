@@ -258,7 +258,7 @@ export default function PrintStickersPage() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 7mm 2mm 7mm 2mm !important;
+            margin: 4mm 2mm 4mm 2mm !important;
           }
 
           * {
