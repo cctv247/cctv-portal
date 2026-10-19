@@ -1,0 +1,60 @@
+{
+  "background_color": "#ffffff",
+  "description": "Advanced CCTV &amp;amp; Inventory Management System",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "cctvportal.vercel",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "cctvportal.vercel",
+  "start_url": "https://cctvportal.vercel.app/",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cctvportal.vercel.app/favicon.ico?favicon.11ptl65bn9xb_.ico",
+      "type": "image/x-icon",
+      "sizes": "48x48",
+      "isSquare": true,
+      "isPng": false,
+      "isWebp": false,
+      "isJpg": false,
+      "width": 48,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
+    },
+    {
+      "src": "https://cctvportal.vercel.app/logo.ico",
+      "type": "image/x-icon",
+      "isSquare": false,
+      "isPng": false,
+      "isWebp": false,
+      "isJpg": false,
+      "width": 0,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
+    },
+    {
+      "src": "https://cctvportal.vercel.app/favicon.ico",
+      "type": "image/x-icon",
+      "isSquare": false,
+      "isPng": false,
+      "isWebp": false,
+      "isJpg": false,
+      "width": 0,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
+    }
+  ],
+  "lang": "en",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "categories": [
+    "business",
+    "security"
+  ]
+}
